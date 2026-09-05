@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "8550f9aec9";</script>
+  <script>window.__APP_VER = "2712910b01";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -684,13 +684,14 @@ function makeDustFloor(w2,d2,color){
   cv.width=Math.min(1024,Math.round(w2*16));cv.height=Math.min(1024,Math.round(d2*16));
   const ctx=cv.getContext('2d');
   const c=new THREE.Color(color);
-  const пыльный='#'+c.clone().multiplyScalar(0.32).getHexString();   // весь в пыли
-  const чистый='#'+c.clone().lerp(new THREE.Color(0xffffff),0.28).getHexString(); // натёртый до блеска
+  // 🧽 грязный = ТЁМНЫЙ тот же цвет, чистый = ЯРКИЙ насыщенный тот же цвет (не серый, не белый!)
+  const пыльный='#'+c.clone().multiplyScalar(0.42).getHexString();   // тёмно-коричневый «в пыли»
+  const чистый='#'+c.clone().multiplyScalar(1.45).getHexString();    // ярко-коричневый «начищено»
   ctx.fillStyle=пыльный;ctx.fillRect(0,0,cv.width,cv.height);
-  for(let i=0;i<260;i++){ctx.fillStyle='rgba(52,48,40,'+rnd(0.06,0.3).toFixed(2)+')';
+  for(let i=0;i<260;i++){ctx.fillStyle='rgba(30,22,14,'+rnd(0.06,0.28).toFixed(2)+')';   // тёмные пятна пыли
     ctx.beginPath();ctx.arc(rnd(0,cv.width),rnd(0,cv.height),rnd(3,15),0,7);ctx.fill();}
   const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;
-  const mat=new THREE.MeshStandardMaterial({map:tex,roughness:0.4,metalness:0.3});
+  const mat=new THREE.MeshStandardMaterial({map:tex,roughness:0.75,metalness:0.0});   // матовый, без серого блеска
   const m=new THREE.Mesh(new THREE.BoxGeometry(w2,0.2,d2),mat);
   m.position.y=-0.1;m.receiveShadow=true;
   пылевойПол={cv,ctx,tex,w:w2,d:d2,чистый,клетки:new Set(),всего:Math.round(w2)*Math.round(d2)};
