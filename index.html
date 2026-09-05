@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "c411238754";</script>
+  <script>window.__APP_VER = "3b1a415890";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -297,8 +297,8 @@ function buildCanister(color){const g=new THREE.Group();
   [[-0.52,0.7],[0.52,0.7]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.14,16),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.24,z);g.add(w);});
   const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
   const wand=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,1.7,12),metal(0xcfd4dd));wand.position.set(0,0.9,-0.45);wand.rotation.x=0.7;g.add(wand);
-  // 🌀 извилистый шланг: от передка корпуса змейкой к трубе
-  g.add(makeHose([[0,0.62,-0.05],[0.22,0.86,-0.3],[-0.2,0.66,-0.52],[0.05,0.5,-0.7]]));
+  // 🌀 извилистый шланг: от ВЕРШИНЫ трубы змейкой к ЦЕНТРУ корпуса (просьба Марка)
+  g.add(makeHose([[0,1.5,0.1],[0.24,1.18,0.02],[-0.22,0.86,0.2],[0,0.58,0.34]]));
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.05),emissive(0x35e0ff,1.0));led.position.set(0,0.62,0.95);g.add(led);
   const fl=flag(color);fl.position.set(0,0.95,0.6);g.add(fl);
   g.userData.spin=[];return g;}
@@ -444,6 +444,7 @@ const MODELS=[
   {id:'retro',name:'Ретро',em:'🧺',build:buildRetro,seat:0.95},
   {id:'futuristic',name:'Турбо',em:'🏎️',build:buildFuturistic,seat:0.85},
   {id:'vikhr',name:'Вихрь (СССР)',em:'🌪️',build:buildVikhr,seat:1.85},
+  {id:'raketa',name:'Ракета (СССР)',em:'🚀',build:buildRaketa,seat:1.0},
   {id:'mop',name:'Робот-мойщик',em:'🧽',build:buildMop,seat:0.65,wet:true},
   {id:'cyclone',name:'Циклонный',em:'🌀',build:buildCyclone,seat:1.0},
   {id:'steam',name:'Паровая швабра',em:'💨',build:buildSteam,seat:1.0,wet:true},
@@ -454,7 +455,6 @@ const MODELS=[
   {id:'drone',name:'Дрон-пылесос',em:'🚁',build:buildDrone,seat:1.0},
   {id:'construct',name:'Строительный',em:'🔧',build:buildConstruct,seat:1.7},
   {id:'washer',name:'Моющий пылесос',em:'💧',build:buildWasher,seat:1.0,wet:true},
-  {id:'raketa',name:'Ракета (СССР)',em:'🚀',build:buildRaketa,seat:1.0},
 ];
 // маленький водитель-пылинка: шарик с глазами, ручками и ножками
 function makeDriver(){
