@@ -1,7 +1,7 @@
-// service worker «Битва пылесосов» — версия по содержимому: 3b1a415890
+// service worker «Битва пылесосов» — версия по содержимому: a04a797695
 // Игра всегда отдаётся МГНОВЕННО из памяти телефона (и работает без интернета).
 // Новая версия скачивается фоном при следующем заходе и применяется сама.
-const CACHE = 'bitva-3b1a415890';
+const CACHE = 'bitva-a04a797695';
 const ASSETS = ['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-512-maskable.png','./apple-touch-icon.png','./favicon-64.png'];
 
 self.addEventListener('install', e => {

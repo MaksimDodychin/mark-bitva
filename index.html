@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "3b1a415890";</script>
+  <script>window.__APP_VER = "a04a797695";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -492,8 +492,9 @@ function buildConstruct(color){const g=new THREE.Group();
   [0.55,1.15].forEach(y=>{const st=new THREE.Mesh(new THREE.TorusGeometry(0.83,0.08,8,22),plastic(0x222228));st.rotation.x=Math.PI/2;st.position.y=y;g.add(st);});
   const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.82,0.8,0.3,20),plastic(0x33363f));lid.position.y=1.55;g.add(lid);
   const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.45,0.45,16),metal(0xcfd4dd));motor.position.y=1.9;g.add(motor);
-  const hose=new THREE.Mesh(new THREE.TorusGeometry(0.6,0.13,10,20,Math.PI*1.1),plastic(0x33363f));hose.position.set(-0.5,1.0,-0.3);hose.rotation.set(Math.PI/2,0,0.5);g.add(hose);
   const noz=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.18,0.5),plastic(0x222228));noz.position.set(0,0.12,-1.0);g.add(noz);
+  // 🌀 извилистый гофрированный ТОЛСТЫЙ шланг: от корпуса-бака змейкой к соплу (просьба Марка)
+  g.add(makeHose([[0,1.15,-0.5],[0.36,0.85,-0.72],[-0.32,0.56,-0.9],[0,0.3,-0.95]],0.14));
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.06,8,18,Math.PI),metal(0xffcf3a));handle.position.set(0,2.1,0.4);handle.rotation.x=Math.PI/2;g.add(handle);
   [[-0.7,0.55],[0.7,0.55],[0,-0.6]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.2,16),plastic(0x222228));w.rotation.z=Math.PI/2;w.position.set(x,0.32,z);g.add(w);});
   const light=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,12),emissive(0xff8a1a,1.2));light.position.set(0,2.05,0);g.add(light);
