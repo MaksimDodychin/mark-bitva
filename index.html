@@ -35,7 +35,7 @@
   #big{position:fixed;left:0;right:0;top:26%;text-align:center;font-size:clamp(24px,6vw,52px);font-weight:900;z-index:25;
     text-shadow:0 3px 0 #04122e,0 0 26px #000;pointer-events:none;white-space:pre-line;transition:opacity .3s}
   #tip{position:fixed;left:0;right:0;bottom:12px;text-align:center;font-size:clamp(12px,2vw,16px);opacity:.8;z-index:20;pointer-events:none}
-  #dpad{position:fixed;right:18px;bottom:18px;z-index:22;display:none;
+  #dpad{position:fixed;left:18px;bottom:18px;z-index:22;display:none;
     grid-template-columns:repeat(3,64px);grid-auto-rows:64px;gap:8px}
   body.touchy #dpad{display:grid}
   .tb{width:64px;height:64px;border-radius:50%;background:#1e40afcc;border:2px solid #93c5fd66;color:#fff;font-size:26px;
@@ -68,7 +68,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "819064561a";</script>
+  <script>window.__APP_VER = "6167269a5f";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -521,10 +521,15 @@ function toast(t){toastQ.push(t);if(toastBusy)return;toastBusy=true;
     $('toast').textContent=m;$('toast').classList.add('show');Snd.ach();
     setTimeout(()=>{$('toast').classList.remove('show');setTimeout(next,350);},2600);};
   next();}
+const ЗОЛОТО=0xffd700;                               // 🏆 золотой пылесос за ВСЕ достижения
+function goldUnlocked(){return ACHS.every(a=>save.ach[a.id]);}
 function checkAch(){let новое=false;
+  const былоЗолото=goldUnlocked();
   for(const a of ACHS){if(save.ach[a.id])continue;
     if(a.cur(save)>=a.goal){save.ach[a.id]=1;новое=true;toast('🏆 ДОСТИЖЕНИЕ: '+a.em+' '+a.name);}}
-  if(новое)saveNow();}
+  if(новое)saveNow();
+  if(!былоЗолото&&goldUnlocked())
+    toast('🌟 ВСЕ ДОСТИЖЕНИЯ! ОТКРЫТ ЗОЛОТОЙ ПЫЛЕСОС! ищи его в гараже');}
 
 /* ═══════════ мебель (группы деталей, как в поместье) ═══════════ */
 const wood=plastic(0x7a4a2a),wood2=plastic(0x5d3a20),white=plastic(0xf2f2f2),
@@ -717,7 +722,10 @@ const ЦВЕТА_БОТОВ=[1,3,4,10,7,2];
 let cars=[];
 function makeCar(modelId,colorIdx,isBot,name){
   const mdl=MODELS.find(m=>m.id===modelId)||MODELS[0];
-  const g=mdl.build(COLORS[colorIdx].h);
+  const g=mdl.build(colorIdx==='gold'?ЗОЛОТО:COLORS[colorIdx].h);
+  if(colorIdx==='gold')g.traverse(o=>{if(o.material&&o.material.color){   // блеск золота
+    o.material.metalness=1;o.material.roughness=0.18;
+    if(o.material.emissive)o.material.emissive.setHex(0x3a2c00);}});
   addDriver(g,mdl.seat);addCord(g);
   world.add(g);
   const car={g,x:0,z:0,yaw:0,v:0,isBot,name,collected:0,hits:0,finished:0,
@@ -958,7 +966,18 @@ function renderGarage(){
   const cr=$('colorRow');cr.innerHTML='';
   COLORS.forEach((c,i)=>{const el=document.createElement('div');
     el.className='sw'+(save.color===i?' sel':'');el.style.background=c.css;
-    el.onclick=()=>{save.color=i;saveNow();renderGarage();};cr.appendChild(el);});}
+    el.onclick=()=>{save.color=i;saveNow();renderGarage();};cr.appendChild(el);});
+  // 🌟 золотой пылесос — открывается, когда собраны ВСЕ достижения (просьба Марка)
+  const gold=document.createElement('div');
+  const открыт=goldUnlocked();
+  gold.className='sw'+(save.color==='gold'?' sel':'');
+  gold.style.cssText='background:linear-gradient(135deg,#fff6b0,#ffd700 45%,#b8860b);'+
+    (открыт?'box-shadow:0 0 12px #ffd70099':'filter:grayscale(1);opacity:.5;position:relative');
+  gold.title=открыт?'Золотой пылесос 🌟':'Собери все достижения!';
+  if(!открыт)gold.innerHTML='<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px">🔒</span>';
+  gold.onclick=()=>{if(!открыт){bigMsg('🔒 Собери все достижения — и откроется!',1.6);return;}
+    save.color='gold';saveNow();renderGarage();Snd.init();Snd.ach();};
+  cr.appendChild(gold);}
 function renderSetup(){
   $('setupTitle').textContent=режимSetup==='train'?'🏋 ТРЕНИРОВКА':'🎉 ВЕЧЕРИНКА';
   $('trainOpts').classList.toggle('hidden',режимSetup!=='train');
@@ -1115,6 +1134,9 @@ window.__dbg={
   suckAll(){const me=cars[0];живаяПыль().forEach(d=>{me.x=d.x;me.z=d.z;collectDust(me);});},
   endTimer(){время=0.01;},
   models:()=>MODELS.map(m=>m.id),
+  unlockAllAch(){ACHS.forEach(a=>save.ach[a.id]=1);saveNow();return goldUnlocked();},
+  get gold(){return goldUnlocked();},
+  pickGold(){save.color='gold';saveNow();return save.color;},
   get чистота(){return чистота();},
   get achs(){return {открыто:Object.keys(save.ach).length,всего:ACHS.length,список:Object.keys(save.ach)};},
   get stat(){return save.stat;},
