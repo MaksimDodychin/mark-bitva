@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "2712910b01";</script>
+  <script>window.__APP_VER = "c411238754";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -251,6 +251,18 @@ function toonMat(m){
 function toonify(root){ root.traverse(o=>{ if(o.isMesh && o.material && o.material.isMeshStandardMaterial){ o.material=toonMat(o.material); } }); }
 
 function flag(color){const g=new THREE.Group();const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.2,6),metal(0xcccccc));pole.position.y=0.6;g.add(pole);const f=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.4),new THREE.MeshStandardMaterial({color,roughness:0.6,side:THREE.DoubleSide,metalness:0.1}));f.position.set(0.3,1.0,0);g.add(f);return g;}
+// 🌀 извилистый ГОФРИРОВАННЫЙ шланг между корпусом и трубой (просьба Марка)
+function makeHose(points,radius=0.08,color=0x2a2f38){
+  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
+  const g=new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(curve,36,radius,8,false),
+    new THREE.MeshStandardMaterial({color,roughness:0.6,metalness:0.12})));
+  const ridgeMat=new THREE.MeshStandardMaterial({color:0x14161c,roughness:0.75});
+  const N=11,up=new THREE.Vector3(0,0,1);
+  for(let i=1;i<N;i++){const t=i/N,pos=curve.getPointAt(t),tan=curve.getTangentAt(t).normalize();
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(radius*1.22,radius*0.34,6,10),ridgeMat);
+    ring.position.copy(pos); ring.quaternion.setFromUnitVectors(up,tan); g.add(ring);}
+  return g;}
 
 function buildRobot(color){const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.1,0.4,48),plastic(color));b.position.y=0.34;b.castShadow=true;g.add(b);
@@ -285,6 +297,8 @@ function buildCanister(color){const g=new THREE.Group();
   [[-0.52,0.7],[0.52,0.7]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.14,16),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.24,z);g.add(w);});
   const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
   const wand=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,1.7,12),metal(0xcfd4dd));wand.position.set(0,0.9,-0.45);wand.rotation.x=0.7;g.add(wand);
+  // 🌀 извилистый шланг: от передка корпуса змейкой к трубе
+  g.add(makeHose([[0,0.62,-0.05],[0.22,0.86,-0.3],[-0.2,0.66,-0.52],[0.05,0.5,-0.7]]));
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.05),emissive(0x35e0ff,1.0));led.position.set(0,0.62,0.95);g.add(led);
   const fl=flag(color);fl.position.set(0,0.95,0.6);g.add(fl);
   g.userData.spin=[];return g;}
