@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "a04a797695";</script>
+  <script>window.__APP_VER = "bf3d43bbb8";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -530,13 +530,13 @@ const ACHS=[
  {id:'d500',  em:'🌪',name:'Пылевой шторм',    desc:'Собери 500 пылинок за всё время',       goal:500, cur:s=>s.stat.dust},
  {id:'fast',  em:'⚡',name:'Скоростная уборка',desc:'Собери всю пыль комнаты быстрее 90 сек',goal:1,   cur:s=>s.stat.fast},
  {id:'shine1',em:'✨',name:'Чистый пол',       desc:'Натри до блеска 60% пола в любой комнате',goal:1, cur:s=>s.stat.shine1},
- {id:'shineAll',em:'🧼',name:'Чистота в каждой комнате',desc:'Натри 60% пола во всех 4 комнатах',goal:4,cur:s=>Object.keys(s.stat.shineRooms).length},
+ {id:'shineAll',em:'🧼',name:'Чистота в каждой комнате',desc:'Натри 60% пола во всех 6 комнатах',goal:6,cur:s=>Object.keys(s.stat.shineRooms).length},
  {id:'party4',em:'🎈',name:'Вместе веселее',   desc:'Сыграй вечеринку с 4 игроками до конца',goal:1,   cur:s=>s.stat.party4},
  {id:'party', em:'🥇',name:'Чемпион вечеринки',desc:'Выиграй вечеринку',                     goal:1,   cur:s=>s.stat.party},
  {id:'party3',em:'👑',name:'Король уборки',    desc:'Выиграй 3 вечеринки',                   goal:3,   cur:s=>s.stat.party},
  {id:'noHit', em:'🎯',name:'Ни царапины',      desc:'Аккуратная уборка без единого удара',   goal:1,   cur:s=>s.stat.noHit},
  {id:'sweep', em:'🏆',name:'Всухую!',          desc:'Выиграй все 3 игры одной вечеринки',    goal:1,   cur:s=>s.stat.sweep},
- {id:'rooms', em:'🏠',name:'Вся квартира',     desc:'Сыграй во всех 4 комнатах',             goal:4,   cur:s=>Object.keys(s.stat.rooms).length},
+ {id:'rooms', em:'🏠',name:'Вся квартира',     desc:'Сыграй во всех 6 комнатах',             goal:6,   cur:s=>Object.keys(s.stat.rooms).length},
  {id:'models',em:'🔧',name:'Коллекционер',     desc:'Прокатись на 10 разных пылесосах',      goal:10,  cur:s=>Object.keys(s.stat.models).length},
  {id:'allvac',em:'🌟',name:'Хозяин гаража',    desc:'Прокатись на ВСЕХ 20 пылесосах',        goal:20,  cur:s=>Object.keys(s.stat.models).length},
 ];
@@ -670,6 +670,74 @@ function fPlant(){const g=new THREE.Group();
   });
   g.userData.r=0.5;return g;}
 
+/* ═══ 🧸 ДЕТСКАЯ и 🚪 ПРИХОЖАЯ (заказ Марка 06.09) ═══ */
+function fKidBed(){const g=new THREE.Group();          // детская кроватка с бортиками
+  const рама=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.45,2.4),plastic(0xf2a6c0));рама.position.y=0.35;рама.castShadow=true;g.add(рама);
+  const мат=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.28,2.3),white);мат.position.y=0.68;g.add(мат);
+  const одеяло=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.14,1.5),fabric(0x6ac8f0));одеяло.position.set(0,0.83,-0.35);g.add(одеяло);
+  const подушка=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.2,0.5),white);подушка.position.set(0,0.9,0.85);g.add(подушка);
+  for(const s of [-1,1]){const борт=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.7,2.4),plastic(0xf2a6c0));
+    борт.position.set(s*0.75,0.9,0);g.add(борт);
+    for(let i=0;i<5;i++){const прут=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.7,8),plastic(0xffffff));
+      прут.position.set(s*0.75,0.9,-0.9+i*0.45);g.add(прут);}}
+  const спинка=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.0,0.12),plastic(0xe98cae));спинка.position.set(0,1.0,1.2);g.add(спинка);
+  g.userData.r=1.5;return g;}
+function fShelf(){const g=new THREE.Group();            // полки с книжками и игрушками
+  const бок=(x)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(0.12,2.4,0.7),wood);b.position.set(x,1.2,0);b.castShadow=true;g.add(b);};
+  бок(-0.85);бок(0.85);
+  for(let i=0;i<3;i++){const п=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.1,0.7),wood);п.position.set(0,0.5+i*0.8,0);g.add(п);
+    for(let k=0;k<5;k++){const кн=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.44,0.5),
+      fabric([0xef4444,0x22c55e,0x3b82f6,0xf59e0b,0xa855f7][(i+k)%5]));
+      кн.position.set(-0.6+k*0.3,0.78+i*0.8,0);g.add(кн);}}
+  g.userData.r=0.9;return g;}
+function fBall(){const g=new THREE.Group();             // 🏀 мячик
+  const м=new THREE.Mesh(new THREE.SphereGeometry(0.34,16,12),plastic(0xff5252));м.position.y=0.34;м.castShadow=true;g.add(м);
+  for(const ax of ['x','z']){const r=new THREE.Mesh(new THREE.TorusGeometry(0.34,0.03,6,20),plastic(0xffffff));
+    r.position.y=0.34;if(ax==='z')r.rotation.y=Math.PI/2;else r.rotation.x=Math.PI/2;g.add(r);}
+  g.userData.r=0.42;return g;}
+function fTeddy(){const g=new THREE.Group();            // 🧸 плюшевый медведь
+  const мех=fabric(0xb4763a);
+  const тело=new THREE.Mesh(new THREE.SphereGeometry(0.36,14,12),мех);тело.scale.set(1,1.15,0.9);тело.position.y=0.42;тело.castShadow=true;g.add(тело);
+  const голова=new THREE.Mesh(new THREE.SphereGeometry(0.28,14,12),мех);голова.position.y=0.92;g.add(голова);
+  for(const s of [-1,1]){const ухо=new THREE.Mesh(new THREE.SphereGeometry(0.11,10,8),мех);ухо.position.set(s*0.19,1.12,0);g.add(ухо);
+    const лапа=new THREE.Mesh(new THREE.SphereGeometry(0.14,10,8),мех);лапа.scale.set(1,0.8,1.2);лапа.position.set(s*0.38,0.45,0.05);g.add(лапа);
+    const нога=new THREE.Mesh(new THREE.SphereGeometry(0.15,10,8),мех);нога.scale.set(1,0.8,1.3);нога.position.set(s*0.18,0.12,0.1);g.add(нога);
+    const глаз=new THREE.Mesh(new THREE.SphereGeometry(0.04,8,8),plastic(0x1a1a1a));глаз.position.set(s*0.1,0.97,0.24);g.add(глаз);}
+  const морда=new THREE.Mesh(new THREE.SphereGeometry(0.13,10,8),fabric(0xdcb185));морда.scale.set(1,0.8,0.8);морда.position.set(0,0.86,0.22);g.add(морда);
+  const нос=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8),plastic(0x1a1a1a));нос.position.set(0,0.9,0.32);g.add(нос);
+  g.userData.r=0.5;return g;}
+function fToyCar(){const g=new THREE.Group();           // 🚗 заводная машинка
+  const кузов=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.26,0.44),plastic(0xffcf33));кузов.position.y=0.26;кузов.castShadow=true;g.add(кузов);
+  const кабина=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.22,0.4),plastic(0x38bdf8));кабина.position.set(-0.05,0.48,0);g.add(кабина);
+  for(const[x,z] of [[-0.26,-0.24],[0.26,-0.24],[-0.26,0.24],[0.26,0.24]]){
+    const кол=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.09,12),plastic(0x26282e));
+    кол.rotation.x=Math.PI/2;кол.position.set(x,0.13,z);g.add(кол);}
+  const ключ=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.025,6,12),metal(0xd8c078));  // заводной ключик
+  ключ.position.set(0.42,0.34,0);ключ.rotation.y=Math.PI/2;g.add(ключ);
+  g.userData.r=0.55;return g;}
+function fShoe(){const g=new THREE.Group();             // 👟 разбросанный ботинок
+  const цв=[0x8b4513,0x1f2937,0x2563eb,0xdc2626][(Math.random()*4)|0];
+  const подошва=new THREE.Mesh(new THREE.BoxGeometry(0.68,0.1,0.3),plastic(0x33363f));подошва.position.y=0.05;g.add(подошва);
+  const верх=new THREE.Mesh(new THREE.SphereGeometry(0.22,12,10),fabric(цв));верх.scale.set(1.5,0.9,1);верх.position.set(-0.08,0.18,0);верх.castShadow=true;g.add(верх);
+  const пятка=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.26,0.28),fabric(цв));пятка.position.set(0.22,0.2,0);g.add(пятка);
+  const шнур=new THREE.Mesh(new THREE.TorusGeometry(0.08,0.018,6,12),fabric(0xffffff));шнур.position.set(-0.1,0.3,0);шнур.rotation.x=Math.PI/2;g.add(шнур);
+  g.rotation.y=rnd(0,6.28);
+  g.userData.r=0.4;return g;}
+function fHanger(){const g=new THREE.Group();           // 🧥 вешалка с одеждой
+  const нога=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,0.08,14),metal(0x8a8f9a));нога.position.y=0.04;g.add(нога);
+  const ствол=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.2,10),metal(0x8a8f9a));ствол.position.y=1.1;g.add(ствол);
+  for(let i=0;i<4;i++){const a=i/4*Math.PI*2;
+    const крюк=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.02,6,10,Math.PI),metal(0x8a8f9a));
+    крюк.position.set(Math.cos(a)*0.16,2.1,Math.sin(a)*0.16);g.add(крюк);
+    if(i<2){const пальто=new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.7,6,10),
+      fabric([0x374151,0x7f1d1d][i]));пальто.position.set(Math.cos(a)*0.22,1.5,Math.sin(a)*0.22);пальто.castShadow=true;g.add(пальто);}}
+  g.userData.r=0.5;return g;}
+function fMirror(){const g=new THREE.Group();           // 🪞 зеркало в прихожей
+  const рама=new THREE.Mesh(new THREE.BoxGeometry(1.0,2.0,0.14),wood);рама.position.y=1.2;рама.castShadow=true;g.add(рама);
+  const стекло=new THREE.Mesh(new THREE.BoxGeometry(0.82,1.8,0.06),
+    new THREE.MeshStandardMaterial({color:0xdfe8f2,metalness:0.9,roughness:0.08}));стекло.position.set(0,1.2,0.08);g.add(стекло);
+  g.userData.r=0.6;return g;}
+
 /* ═══════════ комнаты ═══════════ */
 const W=15,D=11; // пол-размеры комнаты: 30×22
 const КОМНАТЫ=[
@@ -686,6 +754,19 @@ const КОМНАТЫ=[
  {id:'van',name:'🛁 Ванная',floor:0x7fa8c9,wall:0xcfe8f5,items:[
    [fBath,-9,-8,0],[fSink,13.5,-6,0],[fWasherM,13.4,-1,-1.5708],[fToilet,13.4,4,-1.5708],
    [fWasherM,-13.4,3,1.5708],[fPlant,-13,8.5,0],[fSink,-13.5,-2,0]]},
+ // 🧸 ДЕТСКАЯ (заказ Марка): кровать, полки и разбросанные игрушки
+ {id:'det',name:'🧸 Детская',floor:0xb08a5e,wall:0xffe0ec,items:[
+   [fKidBed,-9,-7,0],[fKidBed,9,-7,0],[fShelf,13.4,2,-1.5708],[fShelf,-13.4,2,1.5708],
+   [fNight,-4.5,-9.2,0],[fLamp,-12.5,-9,0],[fTable,0,4,0],[fChair,2.4,4,2.6],
+   [fTeddy,-6,1,0.4],[fTeddy,7.5,5,-1.1],[fBall,-2,-2,0],[fBall,5.5,-3.5,0],[fBall,-10,6,0],
+   [fToyCar,3,0.5,0.8],[fToyCar,-7.5,-3,-0.6],[fToyCar,10,3.5,2.2],[fBall,12,-4,0],[fTeddy,0,8,2.8]]},
+ // 🚪 ПРИХОЖАЯ (заказ Марка): комоды, вешалка, зеркало и разбросанные ботинки
+ {id:'prih',name:'🚪 Прихожая',floor:0x8f7358,wall:0xd8cfc0,items:[
+   [fTumba,-12.8,-6,1.5708],[fTumba,12.8,-6,-1.5708],[fTumba,-12.8,4,1.5708],
+   [fHanger,-9,7,0],[fHanger,9,7,0],[fMirror,13.4,2,-1.5708],[fMirror,-13.4,-1,1.5708],
+   [fLamp,12.5,8.5,0],[fPlant,-13,9,0],[fChair,6,-8,0.6],
+   [fShoe,-6,-3,0],[fShoe,-5.2,-3.6,0],[fShoe,2,1,0],[fShoe,2.8,1.6,0],
+   [fShoe,-2,6,0],[fShoe,8,-2,0],[fShoe,-9.5,0.5,0],[fShoe,5,5.5,0],[fShoe,11,4,0]]},
 ];
 
 let препятствия=[],пол=null;
