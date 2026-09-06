@@ -72,7 +72,7 @@
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "bf3d43bbb8";</script>
+  <script>window.__APP_VER = "25f25d3734";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -723,15 +723,58 @@ function fShoe(){const g=new THREE.Group();             // 👟 разброса
   const шнур=new THREE.Mesh(new THREE.TorusGeometry(0.08,0.018,6,12),fabric(0xffffff));шнур.position.set(-0.1,0.3,0);шнур.rotation.x=Math.PI/2;g.add(шнур);
   g.rotation.y=rnd(0,6.28);
   g.userData.r=0.4;return g;}
-function fHanger(){const g=new THREE.Group();           // 🧥 вешалка с одеждой
-  const нога=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.36,0.08,14),metal(0x8a8f9a));нога.position.y=0.04;g.add(нога);
-  const ствол=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,2.2,10),metal(0x8a8f9a));ствол.position.y=1.1;g.add(ствол);
+/* 🧥 НАСТОЯЩАЯ ОДЕЖДА на плечиках (Марк: «на вешалке просто квадратный овал»):
+   корпус с плечами, рукава, воротник, пуговицы, пояс — узнаётся сразу. */
+function makeCoat(цвет, длина, шарфЦвет){
+  const g=new THREE.Group(); const ткань=fabric(цвет);
+  // плечики
+  const крюк=new THREE.Mesh(new THREE.TorusGeometry(0.07,0.016,6,12,Math.PI),metal(0xc0c6cf));
+  крюк.position.y=0.32;g.add(крюк);
+  const план=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.04,0.05),wood);план.position.y=0.12;g.add(план);
+  for(const s of [-1,1]){const плечо=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.035,0.05),wood);
+    плечо.position.set(s*0.13,0.2,0);плечо.rotation.z=s*0.5;g.add(плечо);}
+  // корпус пальто (сужается книзу)
+  const корпус=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.36,длина,10),ткань);
+  корпус.scale.z=0.5;корпус.position.y=0.06-длина/2;корпус.castShadow=true;g.add(корпус);
+  // плечи-скос
+  const плечи=new THREE.Mesh(new THREE.SphereGeometry(0.3,12,8,0,6.28,0,Math.PI/2),ткань);
+  плечи.scale.set(1,0.45,0.5);плечи.position.y=0.04;g.add(плечи);
+  // рукава
+  for(const s of [-1,1]){const рукав=new THREE.Mesh(new THREE.CapsuleGeometry(0.075,длина*0.62,6,10),ткань);
+    рукав.position.set(s*0.3,-длина*0.34,0);рукав.rotation.z=s*0.12;рукав.castShadow=true;g.add(рукав);
+    const манжет=new THREE.Mesh(new THREE.CylinderGeometry(0.082,0.082,0.07,10),
+      fabric(new THREE.Color(цвет).multiplyScalar(0.7).getHex()));
+    манжет.position.set(s*0.33,-длина*0.66,0);g.add(манжет);}
+  // воротник
+  for(const s of [-1,1]){const вор=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.2,0.05),
+    fabric(new THREE.Color(цвет).multiplyScalar(0.75).getHex()));
+    вор.position.set(s*0.07,-0.02,0.09);вор.rotation.z=s*0.35;g.add(вор);}
+  // пуговицы и пояс
+  for(let i=0;i<3;i++){const п=new THREE.Mesh(new THREE.SphereGeometry(0.026,8,8),plastic(0x2a2a2a));
+    п.position.set(0,-0.18-i*0.22,0.16);g.add(п);}
+  const пояс=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.06,0.2),
+    fabric(new THREE.Color(цвет).multiplyScalar(0.6).getHex()));
+  пояс.position.y=-длина*0.52;g.add(пояс);
+  // шарф свисает (если задан)
+  if(шарфЦвет!==undefined){const ш=fabric(шарфЦвет);
+    const кольцо=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.045,8,14),ш);кольцо.position.y=0.0;кольцо.rotation.x=1.3;g.add(кольцо);
+    for(const s of [-1,1]){const конец=new THREE.Mesh(new THREE.BoxGeometry(0.11,0.42,0.06),ш);
+      конец.position.set(s*0.09,-0.24,0.11);конец.rotation.z=s*0.08;g.add(конец);}}
+  return g;
+}
+function fHanger(){const g=new THREE.Group();           // 🧥 вешалка-стойка с одеждой
+  const нога=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.4,0.08,16),metal(0x8a8f9a));нога.position.y=0.04;g.add(нога);
+  const ствол=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,2.3,12),metal(0x8a8f9a));ствол.position.y=1.15;g.add(ствол);
+  const шапка=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,10),metal(0xc0c6cf));шапка.position.y=2.34;g.add(шапка);
+  const одежда=[[0x374151,1.05,0xdc2626],[0x7f1d1d,0.95,undefined],[0x1d4ed8,0.8,0xfbbf24]];
   for(let i=0;i<4;i++){const a=i/4*Math.PI*2;
-    const крюк=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.02,6,10,Math.PI),metal(0x8a8f9a));
-    крюк.position.set(Math.cos(a)*0.16,2.1,Math.sin(a)*0.16);g.add(крюк);
-    if(i<2){const пальто=new THREE.Mesh(new THREE.CapsuleGeometry(0.2,0.7,6,10),
-      fabric([0x374151,0x7f1d1d][i]));пальто.position.set(Math.cos(a)*0.22,1.5,Math.sin(a)*0.22);пальто.castShadow=true;g.add(пальто);}}
-  g.userData.r=0.5;return g;}
+    const крюк=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.022,6,12,Math.PI),metal(0xc0c6cf));
+    крюк.position.set(Math.cos(a)*0.15,2.16,Math.sin(a)*0.15);крюк.rotation.y=-a;g.add(крюк);
+    if(i<3){const[цв,дл,шарф]=одежда[i];
+      const пальто=makeCoat(цв,дл,шарф);
+      пальто.position.set(Math.cos(a)*0.26,1.86,Math.sin(a)*0.26);
+      пальто.rotation.y=-a+Math.PI/2;g.add(пальто);}}
+  g.userData.r=0.55;return g;}
 function fMirror(){const g=new THREE.Group();           // 🪞 зеркало в прихожей
   const рама=new THREE.Mesh(new THREE.BoxGeometry(1.0,2.0,0.14),wood);рама.position.y=1.2;рама.castShadow=true;g.add(рама);
   const стекло=new THREE.Mesh(new THREE.BoxGeometry(0.82,1.8,0.06),
