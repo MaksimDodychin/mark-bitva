@@ -1,7 +1,7 @@
-// service worker «Битва пылесосов» — версия по содержимому: 25f25d3734
+// service worker «Битва пылесосов» — версия по содержимому: df45e3d396
 // Игра всегда отдаётся МГНОВЕННО из памяти телефона (и работает без интернета).
 // Новая версия скачивается фоном при следующем заходе и применяется сама.
-const CACHE = 'bitva-25f25d3734';
+const CACHE = 'bitva-df45e3d396';
 const ASSETS = ['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-512-maskable.png','./apple-touch-icon.png','./favicon-64.png'];
 
 self.addEventListener('install', e => {
@@ -18,7 +18,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     const ks = await caches.keys();
-    await Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await Promise.all(ks.filter(k => k.startsWith('bitva-') && k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
     // 🔄 ПРИНУДИТЕЛЬНОЕ ОБНОВЛЕНИЕ СТАРЫХ КОПИЙ.
     // Даже если на телефоне лежит старая страница без нового обновлятора, браузер всё равно
@@ -27,8 +27,9 @@ self.addEventListener('activate', e => {
     try {
       const окна = await self.clients.matchAll({ type: 'window' });
       for (const w of окна) {
-        const базовый = w.url.split('?')[0];
-        await w.navigate(базовый + '?v=' + Date.now());
+        if(!w.url.startsWith(self.registration.scope)) continue;
+        const next=new URL(w.url);if(next.searchParams.get('v')==='df45e3d396')continue;
+        next.searchParams.set('v','df45e3d396');await w.navigate(next.href);
       }
     } catch (_) {}
   })());
