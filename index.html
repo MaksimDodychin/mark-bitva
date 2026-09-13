@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "d7e709d86f";</script>
+  <script>window.__APP_VER = "509f2257b3";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -1373,13 +1373,20 @@ function showJoysticks(){
     else el.style.display='none';
   }
 }
-function placeJoy(s){                 // джойстик — по центру четверти игрока (как в сплит-экране)
+function placeJoy(s){
+  /* 🕹 Джойстик — в НИЖНЕМ ЛЕВОМ углу своей четверти (жалоба Марка: раньше он
+     стоял по центру и закрывал почти весь обзор). Так же, как в остальных играх. */
   const rects=SPLITS[cars.length]||SPLITS[4];
   const[rx,ry,rw,rh]=rects[s];
-  const el=$('mjoy'+s);
-  el.style.left=(rx+rw/2)*innerWidth-52+'px';
-  el.style.top=(1-ry-rh/2)*innerHeight-52+'px';
-  el.dataset.cx=(rx+rw/2)*innerWidth; el.dataset.cy=(1-ry-rh/2)*innerHeight;
+  const el=$('mjoy'+s), R=104, M=14;
+  let left = rx*innerWidth + M;
+  let top  = (1-ry)*innerHeight - M - R;
+  /* не вылезаем за свою четверть, если она совсем узкая */
+  left = Math.min(left, (rx+rw)*innerWidth - R - M);
+  top  = Math.max(top,  (1-ry-rh)*innerHeight + M);
+  el.style.left = Math.round(left)+'px';
+  el.style.top  = Math.round(top)+'px';
+  el.dataset.cx = left + R/2; el.dataset.cy = top + R/2;
 }
 for(let s=0;s<4;s++){ const el=$('mjoy'+s);
   el.addEventListener('pointerdown',e=>{e.preventDefault();Snd.init();joyPtr[s]=e.pointerId;moveJoy(s,e);});
@@ -1853,6 +1860,17 @@ window.__мкИгра = {
 
 window.__dbg={
   setFriends(on){сДрузьями=!!on;return сДрузьями;},
+  startParty(roomId,n){ startParty(roomId||КОМНАТЫ[0].id, n||4); return cars.length; },
+  /* проверка расстановки джойстиков без запуска матча */
+  probeJoy(n){ const было=cars.length; while(cars.length<n) cars.push({});
+    const из=[]; for(let s=0;s<n;s++){ const e=$('mjoy'+s); e.style.display='block'; placeJoy(s);
+      /* элемент может быть скрыт правилом !important, поэтому берём то, что поставил placeJoy */
+      const x=parseFloat(e.style.left)||0, y=parseFloat(e.style.top)||0;
+      из.push({ s, x:Math.round(x), y:Math.round(y),
+                низ:Math.round(innerHeight-(y+104)), прав:Math.round(innerWidth-(x+104)) }); }
+    cars.length=было; return из; },
+  joys(){ return [0,1,2,3].map(s=>{ const e=$('mjoy'+s), r=e.getBoundingClientRect();
+    return { s, видно:e.style.display==='block', x:Math.round(r.x), y:Math.round(r.y) }; }); },
   selectModel(id){if(MODELS.some(m=>m.id===id)){save.model=id;saveNow();}},
   nextParty(n){startPartyGame(n);},
   pause(on){battleArt.paused=!!on;if(!on)battleArt.manualView=false;return battleArt.paused;},
