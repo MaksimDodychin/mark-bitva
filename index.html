@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "0122bb2d71";</script>
+  <script>window.__APP_VER = "acc63061a7";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -355,6 +355,21 @@ function vacuumFitTube(mesh,a,b){const A=new THREE.Vector3(...a),B=new THREE.Vec
 function vacuumJoint(g,a,b,r,material){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,14),material);vacuumFitTube(m,a,b);m.castShadow=true;g.add(m);return m;}
 
 
+
+// Колёса поворачиваются вокруг своей оси; поперечная ось входит в корпус щётки.
+function vacuumWheels(g,halfTrack,z,r=.17){
+  vacuumJoint(g,[-halfTrack,r,z],[halfTrack,r,z],.045,metal(0x8d98a7));
+  const wheels=[];
+  for(const side of [-1,1]){
+    const wheel=new THREE.Group();wheel.name='Колесо пылесоса';wheel.position.set(side*halfTrack,r,z);
+    const tire=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.18,24),plastic(0x20242c));tire.rotation.z=Math.PI/2;tire.castShadow=true;wheel.add(tire);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(r*.58,r*.58,.19,20),metal(0xbcc7d3));hub.rotation.z=Math.PI/2;wheel.add(hub);
+    const spoke=new THREE.Mesh(new THREE.BoxGeometry(.025,r*.18,r*.85),plastic(0x454f5e));spoke.position.x=side*.102;wheel.add(spoke);
+    g.add(wheel);wheels.push(wheel);
+  }
+  g.userData.rollWheels=wheels;g.userData.spin=[...(g.userData.spin||[]),...wheels];
+}
+
 function vacuumTopContainer(g,motor,bodyM,clearM){
   motor.scale.setScalar(.48);
   const drum=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.43,24),clearM);
@@ -384,7 +399,7 @@ function buildRobot(color){const g=new THREE.Group();g.userData.cordless=true;
   const bump=new THREE.Mesh(new THREE.CylinderGeometry(1.12,1.12,0.18,48),darkMat);bump.position.y=0.14;g.add(bump);
   [-0.34,0.34].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.12,18,18),emissive(0x66ccff,0.9));e.position.set(x,0.5,-0.86);g.add(e);});
 
-  g.userData.spin=[]; return g;}
+  g.userData.spin=[]; vacuumWheels(g,1.04,0,0.15);return g;}
 function buildStick(color){const g=new THREE.Group();
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.26,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.6);head.castShadow=true;g.add(head);
   const tube=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,2.4,20),metal(0xe2e7ee));tube.position.set(0,1.1,0.3);tube.rotation.x=-0.5;g.add(tube);
@@ -397,17 +412,16 @@ function buildStick(color){const g=new THREE.Group();
   motor.position.set(0,1.65,.54);cyc.position.set(0,1.30,.26);cyc.rotation.x=.67;acc.position.copy(motor.position);acc.rotation.x=.67;
   vacuumJoint(g,[0,.25,-.58],[0,.43,-.43],.18,plastic(color));
   vacuumJoint(g,[0,1.90,.74],[0,2.01,.82],.17,plastic(color));
-  g.userData.spin=[]; return g;}
+  g.userData.spin=[]; vacuumWheels(g,0.79,-0.28,0.18);return g;}
 function buildUpright(color){const g=new THREE.Group();
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.34,1.2),darkMat);base.position.set(0,0.24,-0.3);base.castShadow=true;g.add(base);
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,1.4,10,20),plastic(color));body.position.set(0,1.3,0.28);body.rotation.x=-0.16;body.castShadow=true;g.add(body);
   const bag=new THREE.Mesh(new THREE.CapsuleGeometry(0.34,0.9,8,18),plastic(0xf2f2f2));bag.position.set(0,1.35,0.62);bag.rotation.x=-0.16;g.add(bag);
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.14,0.06),emissive(0x35e0ff,1.2));led.position.set(0,.27,-.913);g.add(led);
-  const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.16,18),metal(0x444b58));wh.rotation.z=Math.PI/2;wh.position.set(0,0.22,0.1);g.add(wh);
 
   const grip=new THREE.Mesh(new THREE.TorusGeometry(.28,.075,12,28),plastic(color));grip.position.set(0,2.73,.32);grip.rotation.y=Math.PI/2;g.add(grip);
   vacuumJoint(g,[0,2.20,.20],[0,2.49,.29],.12,metal(0xcfd4dd));
-  g.userData.spin=[wh]; return g;}
+  g.userData.spin=[]; vacuumWheels(g,0.72,0.1,0.22);return g;}
 
 function buildCanister(color){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,1.2,8,18),plastic(color));body.rotation.z=Math.PI/2;body.position.set(0,0.55,0.35);body.castShadow=true;g.add(body);
@@ -497,15 +511,14 @@ function buildMop(color){const g=new THREE.Group();g.userData.cordless=true;
   const ring=new THREE.Mesh(new THREE.TorusGeometry(1.02,0.06,12,48),emissive(0x33ccff,1.2));ring.rotation.x=Math.PI/2;ring.position.y=0.2;g.add(ring);
   const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.05,0.1,40),plastic(0xeaf6ff));pad.position.y=0.06;g.add(pad);
   [-0.34,0.34].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.09,14,14),emissive(0x66ccff,0.8));e.position.set(x,0.42,-0.8);g.add(e);});
-  g.userData.spin=[pad];return g;}
+  g.userData.spin=[pad];vacuumWheels(g,1.01,0,0.14);return g;}
 function buildCyclone(color){const g=new THREE.Group();
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.34,1.0),darkMat);base.position.set(0,0.24,-0.2);base.castShadow=true;g.add(base);
   const bin=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1.6,24),glass(0xffe27a));bin.position.set(0,1.1,0.2);g.add(bin);
   const core=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,1.5,16),plastic(color));core.position.set(0,1.1,0.2);g.add(core);
   const top=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.5,0.3,24),plastic(color));top.position.set(0,2.0,0.2);g.add(top);
   const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
-  const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.12,16),metal(0x444b58));wh.rotation.z=Math.PI/2;wh.position.set(0,0.2,0.4);g.add(wh);
-  vacuumJoint(g,[0,.22,-.58],[0,.16,-.95],.12,darkMat);g.userData.spin=[wh];return g;}
+  vacuumJoint(g,[0,.22,-.58],[0,.16,-.95],.12,darkMat);g.userData.spin=[];vacuumWheels(g,0.64,0.4,0.2);return g;}
 function buildSteam(color){const g=new THREE.Group();
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.16,0.9),plastic(0x2c2f38));head.position.set(0,0.12,-0.6);head.castShadow=true;g.add(head);
   const tri=new THREE.Mesh(new THREE.ConeGeometry(0.7,0.5,3),plastic(color));tri.rotation.x=-Math.PI/2;tri.position.set(0,0.3,-0.5);g.add(tri);
@@ -518,7 +531,7 @@ function buildSteam(color){const g=new THREE.Group();
   vacuumJoint(g,[0,.20,-.55],[0,.40,-.415],.16,plastic(color));
   vacuumJoint(g,[0,1.96,.636],[0,2.11,.737],.14,plastic(color));
   const gauge=new THREE.Mesh(new THREE.CapsuleGeometry(.11,.30,6,12),glass(0x67d6ff));gauge.position.set(0,.96,-.29);gauge.rotation.x=.593;g.add(gauge);
-  g.userData.spin=[];return g;}
+  g.userData.spin=[];vacuumWheels(g,0.66,-0.28,0.16);return g;}
 function buildCarVac(color){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.4,0.55,8,16),plastic(color));body.rotation.z=Math.PI/2;body.position.set(0,0.45,0.1);body.castShadow=true;g.add(body);
   const noz=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.7,16),plastic(0x2c2f38));noz.rotation.x=-Math.PI/2;noz.position.set(0,0.45,-0.7);g.add(noz);
@@ -634,7 +647,7 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-1.1);g.add(dr);});
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-1.015);g.add(led);
   vacuumFitTube(tubo,[0,.24,-.55],[0,2.05,.30]);tankClean.rotation.x=tankDirty.rotation.x=.44;tankClean.position.z=-.217;tankDirty.position.z=.042;vacuumTopContainer(g,motor,bodyM,glass(0x68caff));
-  g.userData.spin=[];return g;}
+  g.userData.spin=[];vacuumWheels(g,0.7,-0.23,0.17);return g;}
 
 
 
