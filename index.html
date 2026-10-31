@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "acc63061a7";</script>
+  <script>window.__APP_VER = "2611853091";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -205,6 +205,319 @@ lamp.shadow.camera.top=30;lamp.shadow.camera.bottom=-30;scene.add(lamp);
 const world=new THREE.Group();scene.add(world);
 /* Графика комнат и пылесосов. Механика, размеры и сохранения остаются прежними. */
 const battleArt={paused:false,manualView:false,room:'gost',rounds:new Map(),garage:null,preview:null,elapsed:0};
+
+/* Reflector — three.js r160, https://github.com/mrdoob/three.js/blob/r160/examples/jsm/objects/Reflector.js
+The MIT License
+Copyright © 2010-2023 three.js authors
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+const BattleReflector=(()=>{
+const {
+	Color,
+	Matrix4,
+	Mesh,
+	PerspectiveCamera,
+	Plane,
+	ShaderMaterial,
+	UniformsUtils,
+	Vector3,
+	Vector4,
+	WebGLRenderTarget,
+	UnsignedByteType
+}=THREE;
+
+
+class Reflector extends Mesh {
+
+	constructor( geometry, options = {} ) {
+
+		super( geometry );
+
+		this.isReflector = true;
+
+		this.type = 'Reflector';
+		this.camera = new PerspectiveCamera();
+
+		const scope = this;
+
+		const color = ( options.color !== undefined ) ? new Color( options.color ) : new Color( 0x7F7F7F );
+		const textureWidth = options.textureWidth || 512;
+		const textureHeight = options.textureHeight || 512;
+		const clipBias = options.clipBias || 0;
+		const shader = options.shader || Reflector.ReflectorShader;
+		const multisample = ( options.multisample !== undefined ) ? options.multisample : 4;
+
+		//
+
+		const reflectorPlane = new Plane();
+		const normal = new Vector3();
+		const reflectorWorldPosition = new Vector3();
+		const cameraWorldPosition = new Vector3();
+		const rotationMatrix = new Matrix4();
+		const lookAtPosition = new Vector3( 0, 0, - 1 );
+		const clipPlane = new Vector4();
+
+		const view = new Vector3();
+		const target = new Vector3();
+		const q = new Vector4();
+
+		const textureMatrix = new Matrix4();
+		const virtualCamera = this.camera;
+
+		const renderTarget = new WebGLRenderTarget( textureWidth, textureHeight, { samples: multisample, type: UnsignedByteType } );
+
+		const material = new ShaderMaterial( {
+			name: ( shader.name !== undefined ) ? shader.name : 'unspecified',
+			uniforms: UniformsUtils.clone( shader.uniforms ),
+			fragmentShader: shader.fragmentShader,
+			vertexShader: shader.vertexShader
+		} );
+
+		material.uniforms[ 'tDiffuse' ].value = renderTarget.texture;
+		material.uniforms[ 'color' ].value = color;
+		material.uniforms[ 'textureMatrix' ].value = textureMatrix;
+
+		this.material = material;
+
+		this.onBeforeRender = function ( renderer, scene, camera ) {
+
+			reflectorWorldPosition.setFromMatrixPosition( scope.matrixWorld );
+			cameraWorldPosition.setFromMatrixPosition( camera.matrixWorld );
+
+			rotationMatrix.extractRotation( scope.matrixWorld );
+
+			normal.set( 0, 0, 1 );
+			normal.applyMatrix4( rotationMatrix );
+
+			view.subVectors( reflectorWorldPosition, cameraWorldPosition );
+
+			// Avoid rendering when reflector is facing away
+
+			if ( view.dot( normal ) > 0 ) return;
+
+			view.reflect( normal ).negate();
+			view.add( reflectorWorldPosition );
+
+			rotationMatrix.extractRotation( camera.matrixWorld );
+
+			lookAtPosition.set( 0, 0, - 1 );
+			lookAtPosition.applyMatrix4( rotationMatrix );
+			lookAtPosition.add( cameraWorldPosition );
+
+			target.subVectors( reflectorWorldPosition, lookAtPosition );
+			target.reflect( normal ).negate();
+			target.add( reflectorWorldPosition );
+
+			virtualCamera.position.copy( view );
+			virtualCamera.up.set( 0, 1, 0 );
+			virtualCamera.up.applyMatrix4( rotationMatrix );
+			virtualCamera.up.reflect( normal );
+			virtualCamera.lookAt( target );
+
+			virtualCamera.far = camera.far; // Used in WebGLBackground
+
+			virtualCamera.updateMatrixWorld();
+			virtualCamera.projectionMatrix.copy( camera.projectionMatrix );
+
+			// Update the texture matrix
+			textureMatrix.set(
+				0.5, 0.0, 0.0, 0.5,
+				0.0, 0.5, 0.0, 0.5,
+				0.0, 0.0, 0.5, 0.5,
+				0.0, 0.0, 0.0, 1.0
+			);
+			textureMatrix.multiply( virtualCamera.projectionMatrix );
+			textureMatrix.multiply( virtualCamera.matrixWorldInverse );
+			textureMatrix.multiply( scope.matrixWorld );
+
+			// Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+			// Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+			reflectorPlane.setFromNormalAndCoplanarPoint( normal, reflectorWorldPosition );
+			reflectorPlane.applyMatrix4( virtualCamera.matrixWorldInverse );
+
+			clipPlane.set( reflectorPlane.normal.x, reflectorPlane.normal.y, reflectorPlane.normal.z, reflectorPlane.constant );
+
+			const projectionMatrix = virtualCamera.projectionMatrix;
+
+			q.x = ( Math.sign( clipPlane.x ) + projectionMatrix.elements[ 8 ] ) / projectionMatrix.elements[ 0 ];
+			q.y = ( Math.sign( clipPlane.y ) + projectionMatrix.elements[ 9 ] ) / projectionMatrix.elements[ 5 ];
+			q.z = - 1.0;
+			q.w = ( 1.0 + projectionMatrix.elements[ 10 ] ) / projectionMatrix.elements[ 14 ];
+
+			// Calculate the scaled plane vector
+			clipPlane.multiplyScalar( 2.0 / clipPlane.dot( q ) );
+
+			// Replacing the third row of the projection matrix
+			projectionMatrix.elements[ 2 ] = clipPlane.x;
+			projectionMatrix.elements[ 6 ] = clipPlane.y;
+			projectionMatrix.elements[ 10 ] = clipPlane.z + 1.0 - clipBias;
+			projectionMatrix.elements[ 14 ] = clipPlane.w;
+
+			// Render
+			scope.visible = false;
+
+			const currentRenderTarget = renderer.getRenderTarget();
+
+			const currentXrEnabled = renderer.xr.enabled;
+			const currentShadowAutoUpdate = renderer.shadowMap.autoUpdate;
+
+			renderer.xr.enabled = false; // Avoid camera modification
+			renderer.shadowMap.autoUpdate = false; // Avoid re-computing shadows
+
+			renderer.setRenderTarget( renderTarget );
+
+			renderer.state.buffers.depth.setMask( true ); // make sure the depth buffer is writable so it can be properly cleared, see #18897
+
+			if ( renderer.autoClear === false ) renderer.clear();
+			renderer.render( scene, virtualCamera );
+
+			renderer.xr.enabled = currentXrEnabled;
+			renderer.shadowMap.autoUpdate = currentShadowAutoUpdate;
+
+			renderer.setRenderTarget( currentRenderTarget );
+
+			// Restore viewport
+
+			const viewport = camera.viewport;
+
+			if ( viewport !== undefined ) {
+
+				renderer.state.viewport( viewport );
+
+			}
+
+			scope.visible = true;
+
+		};
+
+		this.getRenderTarget = function () {
+
+			return renderTarget;
+
+		};
+
+		this.dispose = function () {
+
+			renderTarget.dispose();
+			scope.material.dispose();
+
+		};
+
+	}
+
+}
+
+Reflector.ReflectorShader = {
+
+	name: 'ReflectorShader',
+
+	uniforms: {
+
+		'color': {
+			value: null
+		},
+
+		'tDiffuse': {
+			value: null
+		},
+
+		'textureMatrix': {
+			value: null
+		}
+
+	},
+
+	vertexShader: /* glsl */`
+		uniform mat4 textureMatrix;
+		varying vec4 vUv;
+
+		#include <common>
+		#include <logdepthbuf_pars_vertex>
+
+		void main() {
+
+			vUv = textureMatrix * vec4( position, 1.0 );
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+			#include <logdepthbuf_vertex>
+
+		}`,
+
+	fragmentShader: /* glsl */`
+		uniform vec3 color;
+		uniform sampler2D tDiffuse;
+		varying vec4 vUv;
+
+		#include <logdepthbuf_pars_fragment>
+
+		float blendOverlay( float base, float blend ) {
+
+			return( base < 0.5 ? ( 2.0 * base * blend ) : ( 1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );
+
+		}
+
+		vec3 blendOverlay( vec3 base, vec3 blend ) {
+
+			return vec3( blendOverlay( base.r, blend.r ), blendOverlay( base.g, blend.g ), blendOverlay( base.b, blend.b ) );
+
+		}
+
+		void main() {
+
+			#include <logdepthbuf_fragment>
+
+			vec4 base = texture2DProj( tDiffuse, vUv );
+			gl_FragColor = vec4( blendOverlay( base.rgb, color ), 1.0 );
+
+			#include <tonemapping_fragment>
+			#include <colorspace_fragment>
+
+		}`
+};
+
+return Reflector;
+
+})();
+
+const battleMirrors=new Set();
+function battleMirror(w,h){
+  const m=new BattleReflector(new THREE.PlaneGeometry(w,h),{color:0xbcbcbc,textureWidth:battleTouch?256:512,textureHeight:battleTouch?512:1024,multisample:0,clipBias:.002});
+  m.name='Зеркало с отражением';m.userData.battleMirror=true;
+  m.camera.userData.battleMirrorPass=true;
+  const reflect=m.onBeforeRender;
+  m.onBeforeRender=function(r,s,c){
+    if(c.userData.battleMirrorPass)return;
+    const visible=[...battleMirrors].map(m=>[m,m.visible]);
+    const target=r.getRenderTarget(),viewport=r.getViewport(new THREE.Vector4()),scissor=r.getScissor(new THREE.Vector4()),scissorTest=r.getScissorTest();
+    const xr=r.xr.enabled,shadows=r.shadowMap.autoUpdate;
+    try{
+      // Opposite mirrors keep their frames but never recursively render one another.
+      for(const [other]of visible)other.visible=false;
+      reflect.call(this,r,s,c);
+    }finally{
+      for(const [other,wasVisible]of visible)other.visible=wasVisible;
+      r.xr.enabled=xr;r.shadowMap.autoUpdate=shadows;
+      r.setRenderTarget(target);r.setViewport(viewport);r.setScissor(scissor);r.setScissorTest(scissorTest);
+    }
+  };
+  battleMirrors.add(m);return m;
+}
+
 const battleTouch=matchMedia('(hover:none), (pointer:coarse)').matches;
 renderer.setPixelRatio(Math.min(devicePixelRatio,battleTouch?1.15:1.65));
 renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -232,11 +545,11 @@ function battleRound(w,h,d){
  for(let i=0;i<pos.count;i++){p.fromBufferAttribute(pos,i);n.copy(p);n.x-=Math.sign(n.x)/6;n.y-=Math.sign(n.y)/6;n.z-=Math.sign(n.z)/6;n.normalize();pos.setXYZ(i,Math.sign(p.x)*box.x+n.x*radius,Math.sign(p.y)*box.y+n.y*radius,Math.sign(p.z)*box.z+n.z*radius);norm.setXYZ(i,n.x,n.y,n.z);}
  g.computeBoundingBox();g.computeBoundingSphere();g.userData.battleKeep=true;battleArt.rounds.set(key,g);return g;
 }
-function battlePolish(g){g.traverse(o=>{if(!o.isMesh)return;if(o.geometry?.type==='BoxGeometry'){const p=o.geometry.parameters;if(p.width>.08&&p.height>.055&&p.depth>.06){const old=o.geometry;o.geometry=battleRound(p.width,p.height,p.depth);old.dispose();}}const mats=Array.isArray(o.material)?o.material:[o.material];o.castShadow=mats.every(m=>!m.transparent);o.receiveShadow=true;for(const m of mats)if(m.isMeshStandardMaterial)m.envMapIntensity=m.envMapIntensity===1?.7:m.envMapIntensity;});}
+function battlePolish(g){g.traverse(o=>{if(!o.isMesh)return;if(o.userData.battleMirror){o.castShadow=false;o.receiveShadow=false;return;}if(o.geometry?.type==='BoxGeometry'){const p=o.geometry.parameters;if(p.width>.08&&p.height>.055&&p.depth>.06){const old=o.geometry;o.geometry=battleRound(p.width,p.height,p.depth);old.dispose();}}const mats=Array.isArray(o.material)?o.material:[o.material];o.castShadow=mats.every(m=>!m.transparent);o.receiveShadow=true;for(const m of mats)if(m.isMeshStandardMaterial)m.envMapIntensity=m.envMapIntensity===1?.7:m.envMapIntensity;});}
 function battleContact(g,r=1.5){const m=new THREE.Mesh(battleShadowGeo,battleShadowMat);m.rotation.x=-Math.PI/2;m.position.y=.022;m.scale.set(r*2.2,r*1.8,1);m.name='contact-shadow';g.add(m);}
 function battleDispose(root,protectedRoots=[]){
  const protectedG=new Set(),protectedM=new Set(),protectedT=new Set();for(const p of protectedRoots)p?.traverse(o=>{if(o.geometry)protectedG.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]).filter(Boolean)){protectedM.add(m);for(const v of Object.values(m))if(v?.isTexture)protectedT.add(v);}});
- const gs=new Set(),ms=new Set(),ts=new Set();root.traverse(o=>{if(o.geometry&&!o.geometry.userData.battleKeep&&!protectedG.has(o.geometry))gs.add(o.geometry);for(const m of(Array.isArray(o.material)?o.material:[o.material]).filter(Boolean)){if(m.userData.battleKeep||protectedM.has(m))continue;ms.add(m);for(const v of Object.values(m))if(v?.isTexture&&!v.userData.battleKeep&&!protectedT.has(v))ts.add(v);}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());
+ const gs=new Set(),ms=new Set(),ts=new Set();root.traverse(o=>{if(o.userData.battleMirror){o.getRenderTarget().dispose();battleMirrors.delete(o);}if(o.geometry&&!o.geometry.userData.battleKeep&&!protectedG.has(o.geometry))gs.add(o.geometry);for(const m of(Array.isArray(o.material)?o.material:[o.material]).filter(Boolean)){if(m.userData.battleKeep||protectedM.has(m))continue;ms.add(m);for(const v of Object.values(m))if(v?.isTexture&&!v.userData.battleKeep&&!protectedT.has(v))ts.add(v);}});gs.forEach(g=>g.dispose());ms.forEach(m=>m.dispose());ts.forEach(t=>t.dispose());
 }
 function battleClearWorld(){battleDispose(world,cars.map(c=>c.g));world.clear();}
 function battleLighting(id){
@@ -370,13 +683,6 @@ function vacuumWheels(g,halfTrack,z,r=.17){
   g.userData.rollWheels=wheels;g.userData.spin=[...(g.userData.spin||[]),...wheels];
 }
 
-function vacuumTopContainer(g,motor,bodyM,clearM){
-  motor.scale.setScalar(.48);
-  const drum=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.43,24),clearM);
-  drum.name='Верхний контейнер моющего пылесоса';drum.position.set(0,2.0,.30);g.add(drum);
-  for(const y of [1.78,2.22]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.31,.31,.07,24),bodyM);cap.position.set(0,y,.30);g.add(cap);}
-  const filter=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.38,16),bodyM);filter.position.copy(drum.position);g.add(filter);
-}
 
 function makeHose(points,radius=0.08,color=0x2a2f38){
   const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
@@ -638,16 +944,16 @@ function buildConstruct(color){const g=new THREE.Group();
   const light=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,12),emissive(0xff8a1a,1.2));light.position.set(0,2.05,0);g.add(light);
   for(const x of [-.5,.5])vacuumJoint(g,[x,1.65,.4],[x,2.1,.4],.06,metal(0xffcf3a));g.userData.spin=[];return g;}
 function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.55);head.castShadow=true;g.add(head);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.02);head.castShadow=true;g.add(head);
   const tubo=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,2.0,14),metal(0xcfd4dd));tubo.position.set(0,1.1,0.2);tubo.rotation.x=-0.4;g.add(tubo);
   const tankClean=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.7,18),glass(0x4db5ff));tankClean.position.set(0,0.95,0.0);tankClean.rotation.x=-0.4;g.add(tankClean);
   const tankDirty=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.6,18),glass(0xbfc6cf));tankDirty.position.set(0,1.5,0.15);tankDirty.rotation.x=-0.4;g.add(tankDirty);
-  const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,1.95,0.3);motor.castShadow=true;g.add(motor);
-  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.4,0.6);handle.rotation.y=Math.PI/2;g.add(handle);
-  [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-1.1);g.add(dr);});
-  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-1.015);g.add(led);
-  vacuumFitTube(tubo,[0,.24,-.55],[0,2.05,.30]);tankClean.rotation.x=tankDirty.rotation.x=.44;tankClean.position.z=-.217;tankDirty.position.z=.042;vacuumTopContainer(g,motor,bodyM,glass(0x68caff));
-  g.userData.spin=[];vacuumWheels(g,0.7,-0.23,0.17);return g;}
+  const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,2.12,-.19);motor.castShadow=true;g.add(motor);
+  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.52,.06);handle.rotation.y=Math.PI/2;g.add(handle);
+  [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-.57);g.add(dr);});
+  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-.485);g.add(led);
+
+  g.userData.spin=[];vacuumWheels(g,0.7,.20,0.17);return g;}
 
 
 
@@ -921,8 +1227,7 @@ function fHanger(){const g=new THREE.Group();           // 🧥 вешалка-�
   g.userData.r=0.55;return g;}
 function fMirror(){const g=new THREE.Group();           // 🪞 зеркало в прихожей
   const рама=new THREE.Mesh(new THREE.BoxGeometry(1.0,2.0,0.14),wood);рама.position.y=1.2;рама.castShadow=true;g.add(рама);
-  const стекло=new THREE.Mesh(new THREE.BoxGeometry(0.82,1.8,0.06),
-    new THREE.MeshStandardMaterial({color:0xdfe8f2,metalness:0.9,roughness:0.08}));стекло.position.set(0,1.2,0.08);g.add(стекло);
+  const стекло=battleMirror(.82,1.8);стекло.position.set(0,1.2,.111);g.add(стекло);
   g.userData.r=0.6;return g;}
 
 /* 📦 Кладовая Марка: старые приборы — настоящие объезжаемые препятствия. */
@@ -1257,12 +1562,8 @@ const BattleRoomArt = (() => {
       const handle=mesh(parent,new THREE.TorusGeometry(.065,.017,7,12),material(color,.28),x+.106,y+.10,z);handle.rotation.y=Math.PI/2;
     }
     function mirror(parent,x,y,w=1.45,h=1.75){
-      const tex=texture(192,256,(ctx,cw,ch)=>{
-        const grad=ctx.createLinearGradient(0,0,cw,ch);grad.addColorStop(0,'#dbe7df');grad.addColorStop(.48,'#b4ccd0');grad.addColorStop(.51,'#d4e0d9');grad.addColorStop(1,'#adc4c1');ctx.fillStyle=grad;ctx.fillRect(0,0,cw,ch);
-        ctx.fillStyle='rgba(251,249,221,.46)';ctx.beginPath();ctx.moveTo(16,0);ctx.lineTo(43,0);ctx.lineTo(165,ch);ctx.lineTo(135,ch);ctx.fill();
-      });
       box(parent,w+.12,h+.12,.09,brass,x,y,.10);
-      const mat=new THREE.MeshStandardMaterial({map:tex,metalness:.46,roughness:.18});mesh(parent,new THREE.PlaneGeometry(w,h),mat,x,y,.154,false);
+      const glass=battleMirror(w,h);glass.position.set(x,y,.154);parent.add(glass);
     }
     function towelRail(parent,x,y=2.25,color='#e4d3ae'){
       for(const dx of [-.60,.60])rod(parent,[x+dx,y,.08],[x+dx,y,.30],.035,brass);
