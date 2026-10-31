@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "5cf6829c60";</script>
+  <script>window.__APP_VER = "fd8ff2b5b5";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -247,7 +247,7 @@ function battleLighting(id){
 }
 function battleFloorCanvas(w2,d2,id){
  const c=document.createElement('canvas');c.width=Math.min(1536,Math.round(w2*40));c.height=Math.min(2048,Math.round(d2*40));const g=c.getContext('2d'),s=c.width/w2,r=battleRandom(837),tile=id==='van'||id==='kuh'||id==='prih';
- const colors={gost:'#aa8056',spal:'#c09f7c',kuh:'#cfccbb',van:'#89b5bd',det:'#ceab75',prih:'#aaac9e',corridor:'#a98a64'};
+ const colors={gost:'#aa8056',spal:'#c09f7c',kuh:'#cfccbb',van:'#89b5bd',det:'#ceab75',prih:'#aaac9e',klad:'#928a79',corridor:'#a98a64'};
  g.fillStyle=colors[id]||colors.gost;g.fillRect(0,0,c.width,c.height);
  if(tile){const step=(id==='van'?1.2:1.8)*s;for(let y=0;y<c.height;y+=step)for(let x=0;x<c.width;x+=step){const alt=(Math.floor(x/step)+Math.floor(y/step))%2;g.fillStyle=id==='van'?(alt?'#a4c9cb':'#82afb5'):id==='kuh'?(alt?'#d7d9c7':'#9daea5'):(alt?'#c1c0ad':'#a6ab9d');g.fillRect(x+1.5,y+1.5,step-3,step-3);g.strokeStyle='rgba(255,255,255,.25)';g.lineWidth=1;g.strokeRect(x+3,y+3,step-6,step-6);}}
  else{const plank=.75*s,len=4.1*s;for(let row=0,y=0;y<c.height;y+=plank,row++){for(let x=-(row%3)*len/3;x<c.width;x+=len){const light=r()*.14;g.fillStyle='rgba(255,241,209,'+light+')';g.fillRect(x+1,y+1,len-2,plank-2);g.strokeStyle='rgba(52,31,17,.22)';g.lineWidth=1.2;g.strokeRect(x,y,len,plank);for(let k=0;k<8;k++){g.strokeStyle=k%3?'rgba(75,42,14,.1)':'rgba(255,243,214,.18)';g.lineWidth=.5;const yy=y+4+r()*(plank-7);g.beginPath();g.moveTo(x,yy);g.bezierCurveTo(x+len*.3,yy-2,x+len*.65,yy+2,x+len,yy);g.stroke();}}}}
@@ -351,6 +351,19 @@ function toonify(root){ root.traverse(o=>{ if(o.isMesh && o.material && o.materi
 
 function flag(color){const g=new THREE.Group();const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1.2,6),metal(0xcccccc));pole.position.y=0.6;g.add(pole);const f=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.4),new THREE.MeshStandardMaterial({color,roughness:0.6,side:THREE.DoubleSide,metalness:0.1}));f.position.set(0.3,1.0,0);g.add(f);return g;}
 // 🌀 извилистый ГОФРИРОВАННЫЙ шланг между корпусом и трубой (просьба Марка)
+// Жёсткая труба задаётся точками крепления: поворот и длина не расходятся с ручкой/щёткой.
+function vacuumFitTube(mesh,a,b){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);mesh.position.copy(A.add(B).multiplyScalar(.5));mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.clone().normalize());mesh.scale.y=(d.length()+.035)/mesh.geometry.parameters.height;return mesh;}
+function vacuumJoint(g,a,b,r,material){const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,1,14),material);vacuumFitTube(m,a,b);m.castShadow=true;g.add(m);return m;}
+
+
+function vacuumTopContainer(g,motor,bodyM,clearM){
+  motor.scale.setScalar(.48);
+  const drum=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.43,24),clearM);
+  drum.name='Верхний контейнер моющего пылесоса';drum.position.set(0,2.0,.30);g.add(drum);
+  for(const y of [1.78,2.22]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.31,.31,.07,24),bodyM);cap.position.set(0,y,.30);g.add(cap);}
+  const filter=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.38,16),bodyM);filter.position.copy(drum.position);g.add(filter);
+}
+
 function makeHose(points,radius=0.08,color=0x2a2f38){
   const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
   const g=new THREE.Group();
@@ -363,7 +376,7 @@ function makeHose(points,radius=0.08,color=0x2a2f38){
     ring.position.copy(pos); ring.quaternion.setFromUnitVectors(up,tan); g.add(ring);}
   return g;}
 
-function buildRobot(color){const g=new THREE.Group();
+function buildRobot(color){const g=new THREE.Group();g.userData.cordless=true;
   const b=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.1,0.4,48),plastic(color));b.position.y=0.34;b.castShadow=true;g.add(b);
   const chrome=new THREE.Mesh(new THREE.TorusGeometry(1.07,0.05,14,56),metal(0xdfe6ee));chrome.rotation.x=Math.PI/2;chrome.position.y=0.5;g.add(chrome);
   const top=new THREE.Mesh(new THREE.SphereGeometry(0.55,32,24,0,Math.PI*2,0,Math.PI/2),plastic(0xf2f4f8));top.position.y=0.54;g.add(top);
@@ -380,15 +393,21 @@ function buildStick(color){const g=new THREE.Group();
   const cyc=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.66,24),glass(0xff5bb0));cyc.position.set(0,1.15,0.0);cyc.rotation.x=-0.5;g.add(cyc);
   const acc=new THREE.Mesh(new THREE.TorusGeometry(0.42,0.05,12,28),emissive(0x9b59ff,1.2));acc.position.copy(motor.position);g.add(acc);
   const hd=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.07,12,28),plastic(color));hd.position.set(0,2.2,1.0);hd.rotation.y=Math.PI/2;g.add(hd);
-  const fl=flag(color);fl.position.set(0,0.2,0.9);g.add(fl);
+  const fl=flag(color);fl.position.set(.3,.82,-.1);g.add(fl);
+  vacuumFitTube(tube,[0,.24,-.58],[0,1.98,.80]);
+  motor.position.set(0,1.65,.54);cyc.position.set(0,1.30,.26);cyc.rotation.x=.67;acc.position.copy(motor.position);acc.rotation.x=.67;
+  vacuumJoint(g,[0,.25,-.58],[0,.43,-.43],.18,plastic(color));
+  vacuumJoint(g,[0,1.90,.74],[0,2.01,.82],.17,plastic(color));fl.position.set(.25,1.65,.54);
   g.userData.spin=[]; return g;}
 function buildUpright(color){const g=new THREE.Group();
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.34,1.2),darkMat);base.position.set(0,0.24,-0.3);base.castShadow=true;g.add(base);
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,1.4,10,20),plastic(color));body.position.set(0,1.3,0.28);body.rotation.x=-0.16;body.castShadow=true;g.add(body);
   const bag=new THREE.Mesh(new THREE.CapsuleGeometry(0.34,0.9,8,18),plastic(0xf2f2f2));bag.position.set(0,1.35,0.62);bag.rotation.x=-0.16;g.add(bag);
-  const led=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.14,0.06),emissive(0x35e0ff,1.2));led.position.set(0,0.66,-0.86);g.add(led);
+  const led=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.14,0.06),emissive(0x35e0ff,1.2));led.position.set(0,.27,-.913);g.add(led);
   const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.16,18),metal(0x444b58));wh.rotation.z=Math.PI/2;wh.position.set(0,0.22,0.1);g.add(wh);
-  const fl=flag(color);fl.position.set(0,1.0,0.9);g.add(fl);
+  const fl=flag(color);fl.position.set(.3,1.6,.4);g.add(fl);
+  const grip=new THREE.Mesh(new THREE.TorusGeometry(.28,.075,12,28),plastic(color));grip.position.set(0,2.73,.32);grip.rotation.y=Math.PI/2;g.add(grip);
+  vacuumJoint(g,[0,2.20,.20],[0,2.49,.29],.12,metal(0xcfd4dd));
   g.userData.spin=[wh]; return g;}
 
 function buildCanister(color){const g=new THREE.Group();
@@ -400,6 +419,7 @@ function buildCanister(color){const g=new THREE.Group();
   g.add(makeHose([[0,1.5,0.1],[0.24,1.18,0.02],[-0.22,0.86,0.2],[0,0.58,0.34]]));
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.05),emissive(0x35e0ff,1.0));led.position.set(0,0.62,0.95);g.add(led);
   const fl=flag(color);fl.position.set(0,0.95,0.6);g.add(fl);
+  vacuumFitTube(wand,[0,.17,-.95],[0,1.56,.08]);
   g.userData.spin=[];return g;}
 function buildHandheld(color){const g=new THREE.Group();
   const main=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,0.7,8,16),plastic(color));main.rotation.z=Math.PI/2;main.position.set(0,0.5,0.15);main.castShadow=true;g.add(main);
@@ -407,14 +427,15 @@ function buildHandheld(color){const g=new THREE.Group();
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.08,10,22),plastic(color));handle.position.set(0,0.95,0.45);handle.rotation.y=Math.PI/2;g.add(handle);
   const eye=new THREE.Mesh(new THREE.SphereGeometry(0.1,16,16),emissive(0x66ccff,0.9));eye.position.set(0,0.6,-0.35);g.add(eye);
   [[-0.32,0.45],[0.32,0.45]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.1,14),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.16,z);g.add(w);});
-  const fl=flag(color);fl.position.set(0,0.9,0.55);g.add(fl);
+  const fl=flag(color);fl.position.set(.35,.65,.15);g.add(fl);
+  vacuumJoint(g,[0,.5,-.22],[0,.5,-.5],.19,darkMat);
   g.userData.spin=[];return g;}
 function buildShopVac(color){const g=new THREE.Group();
   const drum=new THREE.Mesh(new THREE.CylinderGeometry(0.82,0.85,1.15,28),plastic(color));drum.position.y=0.75;drum.castShadow=true;g.add(drum);
   const hoop=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.06,12,30),metal(0xcfd4dd));hoop.rotation.x=Math.PI/2;hoop.position.y=0.95;g.add(hoop);
   const top=new THREE.Mesh(new THREE.SphereGeometry(0.82,28,16,0,6.283,0,Math.PI/2),plastic(0x2c2f38));top.position.y=1.32;g.add(top);
   const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.32,18),metal(0x9aa3b2));motor.position.y=1.8;g.add(motor);
-  const hose=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.1,10,24,Math.PI*1.2),metal(0x444b58));hose.position.set(-0.4,1.0,-0.4);hose.rotation.set(Math.PI/2,0,0.6);g.add(hose);
+  const hose=makeHose([[-.3,.95,-.72],[-.9,.8,-1.1],[-.7,.42,-1.3],[0,.18,-.95]],.12);g.add(hose);
   const noz=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.16,0.5),darkMat);noz.position.set(0,0.12,-1.0);g.add(noz);
   [[-0.6,0.7],[0.6,0.7]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.16,16),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.26,z);g.add(w);});
   const fl=flag(color);fl.position.set(0,2.1,0);g.add(fl);
@@ -455,7 +476,7 @@ function buildRaketa(color){const g=new THREE.Group();
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.05,10,20),metal(0x33384a));handle.position.set(0,1.18,0.2);handle.rotation.x=Math.PI/2;g.add(handle);
   const band=new THREE.Mesh(new THREE.TorusGeometry(0.56,0.05,12,30),metal(0xdfe6ee));band.rotation.x=Math.PI/2;band.position.set(0,0.62,0.1);g.add(band);
   [-1,1].forEach(d=>{const st=sovietStar();st.position.set(0.56*d,0.7,0.2);st.rotation.y=d>0?Math.PI/2:-Math.PI/2;g.add(st);});
-  const fl=flag(color);fl.position.set(0,1.2,0.9);g.add(fl);
+  const fl=flag(color);fl.position.set(.22,.95,.7);g.add(fl);
   g.userData.spin=[];return g;}
 function buildVikhr(color){const g=new THREE.Group();
   const base=new THREE.Mesh(new THREE.CylinderGeometry(0.72,0.78,0.24,26),darkMat);base.position.y=0.14;base.castShadow=true;g.add(base);
@@ -467,10 +488,11 @@ function buildVikhr(color){const g=new THREE.Group();
   const wand=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,1.4,12),metal(0xcfd4dd));wand.position.set(0.1,0.85,-0.55);wand.rotation.x=0.6;g.add(wand);
   [[-0.45,0.5],[0.45,0.5],[0,-0.5]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.12,14),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.12,z);g.add(w);});
   const st=sovietStar();st.position.set(0,1.1,-0.66);g.add(st);
-  const fl=flag(color);fl.position.set(0,1.0,0.85);g.add(fl);
+  const fl=flag(color);fl.position.set(.3,1.65,.25);g.add(fl);
+  vacuumFitTube(wand,[.1,.16,-.95],[.1,1.42,-.55]);
   g.userData.spin=[];return g;}
 
-function buildMop(color){const g=new THREE.Group();
+function buildMop(color){const g=new THREE.Group();g.userData.cordless=true;
   const b=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.05,0.34,40),plastic(color));b.position.y=0.32;b.castShadow=true;g.add(b);
   const tank=new THREE.Mesh(new THREE.SphereGeometry(0.55,28,18,0,6.283,0,Math.PI/2),glass(0x66bfff));tank.position.y=0.5;g.add(tank);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(1.02,0.06,12,48),emissive(0x33ccff,1.2));ring.rotation.x=Math.PI/2;ring.position.y=0.2;g.add(ring);
@@ -484,7 +506,7 @@ function buildCyclone(color){const g=new THREE.Group();
   const top=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.5,0.3,24),plastic(color));top.position.set(0,2.0,0.2);g.add(top);
   const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
   const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.12,16),metal(0x444b58));wh.rotation.z=Math.PI/2;wh.position.set(0,0.2,0.4);g.add(wh);
-  const fl=flag(color);fl.position.set(0,1.0,0.9);g.add(fl);g.userData.spin=[wh];return g;}
+  const fl=flag(color);fl.position.set(.35,2.05,.2);g.add(fl);vacuumJoint(g,[0,.22,-.58],[0,.16,-.95],.12,darkMat);g.userData.spin=[wh];return g;}
 function buildSteam(color){const g=new THREE.Group();
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.16,0.9),plastic(0x2c2f38));head.position.set(0,0.12,-0.6);head.castShadow=true;g.add(head);
   const tri=new THREE.Mesh(new THREE.ConeGeometry(0.7,0.5,3),plastic(color));tri.rotation.x=-Math.PI/2;tri.position.set(0,0.3,-0.5);g.add(tri);
@@ -492,14 +514,20 @@ function buildSteam(color){const g=new THREE.Group();
   const tank=new THREE.Mesh(new THREE.CapsuleGeometry(0.3,0.6,8,16),plastic(color));tank.position.set(0,0.9,0.2);g.add(tank);
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.26,0.06,10,22),plastic(color));handle.position.set(0,2.3,0.9);handle.rotation.y=Math.PI/2;g.add(handle);
   for(let k=0;k<3;k++){const st=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8),emissive(0xffffff,0.5));st.position.set(0,0.4+k*0.15,-0.95-k*0.1);g.add(st);}
-  const fl=flag(color);fl.position.set(0,0.4,0.7);g.add(fl);g.userData.spin=[];return g;}
+  const fl=flag(color);fl.position.set(-.22,1.0,.2);g.add(fl);vacuumFitTube(tube,[0,.20,-.55],[0,2.10,.73]);
+  tank.position.set(0,.96,-.038);tank.rotation.x=.593;fl.position.set(-.22,1.02,0);
+  vacuumJoint(g,[0,.20,-.55],[0,.40,-.415],.16,plastic(color));
+  vacuumJoint(g,[0,1.96,.636],[0,2.11,.737],.14,plastic(color));
+  const gauge=new THREE.Mesh(new THREE.CapsuleGeometry(.11,.30,6,12),glass(0x67d6ff));gauge.position.set(0,.96,-.29);gauge.rotation.x=.593;g.add(gauge);
+  g.userData.spin=[];return g;}
 function buildCarVac(color){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.4,0.55,8,16),plastic(color));body.rotation.z=Math.PI/2;body.position.set(0,0.45,0.1);body.castShadow=true;g.add(body);
   const noz=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.7,16),plastic(0x2c2f38));noz.rotation.x=-Math.PI/2;noz.position.set(0,0.45,-0.7);g.add(noz);
   const plug=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.3),metal(0xd9a526));plug.position.set(0,0.45,0.7);g.add(plug);
   const grip=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.06,10,20),plastic(color));grip.position.set(0,0.85,0.3);grip.rotation.y=Math.PI/2;g.add(grip);
   [[-0.3,0.45],[0.3,0.45]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.1,12),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.14,z);g.add(w);});
-  const fl=flag(color);fl.position.set(0,0.85,0.5);g.add(fl);g.userData.spin=[];return g;}
+  const fl=flag(color);fl.position.set(0,0.85,0.5);g.add(fl);vacuumJoint(g,[0,.45,-.20],[0,.45,-.5],.15,darkMat);
+  g.userData.spin=[];return g;}
 function buildBlower(color){const g=new THREE.Group();
   const tb=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,1.4,20),plastic(color));tb.rotation.x=Math.PI/2;tb.position.set(0,0.6,0.1);tb.castShadow=true;g.add(tb);
   const intake=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.4,20),plastic(0x2c2f38));intake.rotation.x=Math.PI/2;intake.position.set(0,0.6,0.8);g.add(intake);
@@ -512,7 +540,7 @@ function buildBackpack(color){const g=new THREE.Group();
   const pack=new THREE.Mesh(new THREE.CapsuleGeometry(0.55,1.0,10,18),plastic(color));pack.position.set(0,0.95,0.4);pack.castShadow=true;g.add(pack);
   const motor=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,0.4,18),metal(0xcfd4dd));motor.position.set(0,1.7,0.4);g.add(motor);
   const noz=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.8,16),darkMat);noz.rotation.x=-Math.PI/2;noz.position.set(0,0.25,-0.85);g.add(noz);
-  const hose=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.1,10,22,Math.PI),metal(0x444b58));hose.position.set(0.3,0.7,-0.2);hose.rotation.set(Math.PI/2,0,0.7);g.add(hose);
+  const hose=makeHose([[.45,1,0],[.9,.9,-.3],[.7,.6,-.7],[0,.30,-.65]],.105);g.add(hose);
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.3,1.0),darkMat);base.position.set(0,0.16,-0.1);g.add(base);
   [[-0.45,0.4],[0.45,0.4]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.12,14),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.2,z);g.add(w);});
   const fl=flag(color);fl.position.set(0,1.9,0.4);g.add(fl);g.userData.spin=[];return g;}
@@ -522,16 +550,16 @@ function buildPool(color){const g=new THREE.Group();
   [-1,1].forEach(s=>{const track=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.5,1.7),metal(0x2c2f38));track.position.set(0.75*s,0.35,0);g.add(track);});
   [-0.34,0.34].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,12),emissive(0x33ccff,0.8));e.position.set(x,0.7,-0.82);g.add(e);});
   const fl=flag(color);fl.position.set(0,1.1,0.4);g.add(fl);g.userData.spin=[];return g;}
-function buildDrone(color){const g=new THREE.Group();
+function buildDrone(color){const g=new THREE.Group();g.userData.cordless=true;
   const body=new THREE.Mesh(new THREE.SphereGeometry(0.5,24,18),plastic(color));body.scale.y=0.7;body.position.y=0.8;body.castShadow=true;g.add(body);
   const intake=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.4,0.3,18),darkMat);intake.position.y=0.45;g.add(intake);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.05,10,32),emissive(0x35e0ff,1.4));ring.rotation.x=Math.PI/2;ring.position.y=0.6;g.add(ring);
   [[-0.7,-0.7],[0.7,-0.7],[-0.7,0.7],[0.7,0.7]].forEach(([x,z])=>{
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.9,8),metal(0x2c2f38));arm.rotation.z=Math.PI/2;arm.position.set(x*0.5,0.85,z*0.5);g.add(arm);
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.9,8),metal(0x2c2f38));vacuumFitTube(arm,[0,.85,0],[x,.95,z]);g.add(arm);
     const rot=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.03,0.1),emissive(0xbbbbbb,0.3));rot.position.set(x,0.95,z);g.add(rot);
     const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.1,10),darkMat);hub.position.set(x,0.95,z);g.add(hub);});
   [-0.18,0.18].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.08,12,12),emissive(0x66ccff,0.9));e.position.set(x,0.85,-0.45);g.add(e);});
-  const fl=flag(color);fl.position.set(0,1.2,0.3);g.add(fl);g.userData.spin=[];return g;}
+  const fl=flag(color);fl.position.set(0,1.03,.2);g.add(fl);g.userData.spin=[];return g;}
 
 const MODELS=[
   {id:'robot',name:'Робот',em:'🤖',build:buildRobot,seat:0.62},
@@ -582,7 +610,7 @@ function makeCord(){const g=new THREE.Group();
   const prongMat=new THREE.MeshStandardMaterial({color:0xcfd4dd,metalness:0.9,roughness:0.2});
   [-0.06,0.06].forEach(x=>{const pr=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.035,0.18),prongMat);pr.position.set(0.1+x,0.09,2.7);g.add(pr);});
   return g;}
-function addCord(group){const c=makeCord();group.add(c);group.userData.cord=c;}
+function addCord(group){if(group.userData.cordless)return;const c=makeCord();group.add(c);group.userData.cord=c;}
 const COLORS=[{h:0x4d9fff,css:'#4d9fff'},{h:0xe23b3b,css:'#e23b3b'},{h:0x9b59ff,css:'#9b59ff'},{h:0x36c46a,css:'#36c46a'},{h:0xf5c518,css:'#f5c518'},{h:0xf2f2f2,css:'#f2f2f2'},{h:0x35d0ff,css:'#35d0ff'},{h:0xff8a3b,css:'#ff8a3b'},{h:0x26282e,css:'#26282e'},{h:0x9aa0a8,css:'#9aa0a8'},{h:0xff6fb5,css:'#ff6fb5'},{h:0x8a5a2a,css:'#8a5a2a'}];
 
 function buildConstruct(color){const g=new THREE.Group();
@@ -596,7 +624,7 @@ function buildConstruct(color){const g=new THREE.Group();
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.06,8,18,Math.PI),metal(0xffcf3a));handle.position.set(0,2.1,0.4);handle.rotation.x=Math.PI/2;g.add(handle);
   [[-0.7,0.55],[0.7,0.55],[0,-0.6]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.32,0.2,16),plastic(0x222228));w.rotation.z=Math.PI/2;w.position.set(x,0.32,z);g.add(w);});
   const light=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,12),emissive(0xff8a1a,1.2));light.position.set(0,2.05,0);g.add(light);
-  const fl=flag(color);fl.position.set(0,2.25,0.0);g.add(fl);g.userData.spin=[];return g;}
+  const fl=flag(color);fl.position.set(.25,1.92,0);g.add(fl);for(const x of [-.5,.5])vacuumJoint(g,[x,1.65,.4],[x,2.1,.4],.06,metal(0xffcf3a));g.userData.spin=[];return g;}
 function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color);
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.55);head.castShadow=true;g.add(head);
   const tubo=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,2.0,14),metal(0xcfd4dd));tubo.position.set(0,1.1,0.2);tubo.rotation.x=-0.4;g.add(tubo);
@@ -605,8 +633,9 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,1.95,0.3);motor.castShadow=true;g.add(motor);
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.4,0.6);handle.rotation.y=Math.PI/2;g.add(handle);
   [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-1.1);g.add(dr);});
-  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,0.55,-0.86);g.add(led);
-  const fl2=flag(color);fl2.position.set(0,0.3,0.7);g.add(fl2);g.userData.spin=[];return g;}
+  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-1.015);g.add(led);
+  const fl2=flag(color);fl2.position.set(-.3,1.0,-.18);g.add(fl2);vacuumFitTube(tubo,[0,.24,-.55],[0,2.05,.30]);tankClean.rotation.x=tankDirty.rotation.x=.44;tankClean.position.z=-.217;tankDirty.position.z=.042;vacuumTopContainer(g,motor,bodyM,glass(0x68caff));
+  g.userData.spin=[];return g;}
 
 
 
@@ -628,13 +657,13 @@ const ACHS=[
  {id:'d500',  em:'🌪',name:'Пылевой шторм',    desc:'Собери 500 пылинок за всё время',       goal:500, cur:s=>s.stat.dust},
  {id:'fast',  em:'⚡',name:'Скоростная уборка',desc:'Собери всю пыль комнаты быстрее 90 сек',goal:1,   cur:s=>s.stat.fast},
  {id:'shine1',em:'✨',name:'Чистый пол',       desc:'Натри до блеска 60% пола в любой комнате',goal:1, cur:s=>s.stat.shine1},
- {id:'shineAll',em:'🧼',name:'Чистота в каждой комнате',desc:'Натри 60% пола во всех 6 комнатах',goal:6,cur:s=>Object.keys(s.stat.shineRooms).length},
+ {id:'shineAll',em:'🧼',name:'Чистота в каждой комнате',desc:'Натри 60% пола во всех 7 комнатах',goal:7,cur:s=>Object.keys(s.stat.shineRooms).length},
  {id:'party4',em:'🎈',name:'Вместе веселее',   desc:'Сыграй вечеринку с 4 игроками до конца',goal:1,   cur:s=>s.stat.party4},
  {id:'party', em:'🥇',name:'Чемпион вечеринки',desc:'Выиграй вечеринку',                     goal:1,   cur:s=>s.stat.party},
  {id:'party3',em:'👑',name:'Король уборки',    desc:'Выиграй 3 вечеринки',                   goal:3,   cur:s=>s.stat.party},
  {id:'noHit', em:'🎯',name:'Ни царапины',      desc:'Аккуратная уборка без единого удара',   goal:1,   cur:s=>s.stat.noHit},
  {id:'sweep', em:'🏆',name:'Всухую!',          desc:'Выиграй все 3 игры одной вечеринки',    goal:1,   cur:s=>s.stat.sweep},
- {id:'rooms', em:'🏠',name:'Вся квартира',     desc:'Сыграй во всех 6 комнатах',             goal:6,   cur:s=>Object.keys(s.stat.rooms).length},
+ {id:'rooms', em:'🏠',name:'Вся квартира',     desc:'Сыграй во всех 7 комнатах',             goal:7,   cur:s=>Object.keys(s.stat.rooms).length},
  {id:'models',em:'🔧',name:'Коллекционер',     desc:'Прокатись на 10 разных пылесосах',      goal:10,  cur:s=>Object.keys(s.stat.models).length},
  {id:'allvac',em:'🌟',name:'Хозяин гаража',    desc:'Прокатись на ВСЕХ 20 пылесосах',        goal:20,  cur:s=>Object.keys(s.stat.models).length},
 ];
@@ -884,6 +913,37 @@ function fMirror(){const g=new THREE.Group();           // 🪞 зеркало �
     new THREE.MeshStandardMaterial({color:0xdfe8f2,metalness:0.9,roughness:0.08}));стекло.position.set(0,1.2,0.08);g.add(стекло);
   g.userData.r=0.6;return g;}
 
+/* 📦 Кладовая Марка: старые приборы — настоящие объезжаемые препятствия. */
+function storageLabel(text,color=0x763e38){const t=battleTexture(256,96,(c,w,h)=>{c.fillStyle='#e9dfc6';c.fillRect(0,0,w,h);c.strokeStyle='#80664c';c.lineWidth=5;c.strokeRect(4,4,w-8,h-8);c.fillStyle='#34281f';c.textAlign='center';c.font='bold 39px sans-serif';c.fillText(text,w/2,62,w-15);},false);return new THREE.Mesh(new THREE.PlaneGeometry(.64,.24),new THREE.MeshStandardMaterial({map:t,roughness:.8}));}
+function storageBox(g,w,h,d,m,x,y,z){const a=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);a.position.set(x,y,z);g.add(a);return a;}
+function fOldKirby(){
+ const g=new THREE.Group(),silver=metal(0x9eaaa9),rubber=plastic(0x323437),bag=new THREE.MeshStandardMaterial({color:0x803f4b,map:battleWeave,roughness:.94});silver.roughness=.36;
+ storageBox(g,1.9,.32,.95,silver,0,.28,-.55);storageBox(g,1.75,.08,.10,rubber,0,.12,-1.02);
+ const motor=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.62,24),silver);motor.rotation.x=Math.PI/2;motor.position.set(0,.55,-.08);g.add(motor);
+ vacuumJoint(g,[0,.40,-.32],[0,2.73,.48],.065,silver);
+ const sack=new THREE.Mesh(new THREE.CapsuleGeometry(.39,1.03,8,18),bag);sack.position.set(0,1.49,.30);sack.rotation.x=.22;g.add(sack);
+ for(const y of [.87,2.03])vacuumJoint(g,[0,y,.18],[0,y,.36],.08,rubber);
+ const handle=new THREE.Mesh(new THREE.TorusGeometry(.25,.065,10,24),rubber);handle.rotation.y=Math.PI/2;handle.position.set(0,2.91,.65);g.add(handle);
+ for(const x of [-.67,.67]){const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.16,20),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(x,.22,.02);g.add(wheel);}
+ const badge=storageLabel('KIRBY');badge.position.set(0,.37,-1.035);badge.rotation.y=Math.PI;g.add(badge);
+ const seam=new THREE.Mesh(new THREE.BoxGeometry(.025,1.2,.025),plastic(0xa36c70));seam.position.set(0,1.5,-.085);g.add(seam);
+ g.scale.setScalar(1.3);g.name='Старый пылесос Кирби';g.userData.r=1.52;g.userData.appliance='kirby';return g;
+}
+function fOldFan(){
+ const g=new THREE.Group(),steel=metal(0x799693),dark=plastic(0x404a47);
+ const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.72,.15,24),steel);base.position.y=.09;g.add(base);vacuumJoint(g,[0,.15,0],[0,1.75,0],.09,steel);vacuumJoint(g,[0,1.65,0],[0,2.05,-.1],.09,steel);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.67,.05,10,40),steel);ring.position.set(0,2.05,-.12);g.add(ring);
+ const hub=new THREE.Mesh(new THREE.SphereGeometry(.17,14,10),dark);hub.position.set(0,2.05,-.17);g.add(hub);
+ for(let i=0;i<8;i++){const a=i*Math.PI/4;vacuumJoint(g,[0,2.05,-.19],[Math.cos(a)*.66,2.05+Math.sin(a)*.66,-.16],.012,steel);}
+ for(const r of [.23,.43,.57]){const wire=new THREE.Mesh(new THREE.TorusGeometry(r,.012,6,36),steel);wire.position.set(0,2.05,-.19);g.add(wire);}
+ for(let i=0;i<3;i++){const blade=storageBox(g,.25,.66,.05,dark,Math.sin(i*2.094)*.25,2.05+Math.cos(i*2.094)*.25,-.10);blade.rotation.z=-i*2.094;}
+ g.name='Старый вентилятор';g.userData.r=.86;g.userData.appliance='fan';return g;
+}
+function fOldHeater(){const g=new THREE.Group(),m=plastic(0xc1bb9e),dark=plastic(0x494844);for(let i=0;i<7;i++){storageBox(g,.15,1.65,.62,m,-.60+i*.2,.99,0);storageBox(g,.10,.10,.67,dark,-.60+i*.2,.38,0);}for(const z of [-.23,.23])vacuumJoint(g,[-.68,.42,z],[.7,.42,z],.06,dark);for(const x of [-.65,.65])for(const z of [-.38,.38]){const w=new THREE.Mesh(new THREE.SphereGeometry(.095,10,8),dark);w.position.set(x,.13,z);g.add(w);}storageBox(g,.30,1.5,.66,m,.90,.95,0);storageBox(g,.15,.24,.05,dark,.90,1.5,-.36);g.name='Масляный обогреватель';g.userData.r=1.3;g.userData.appliance='heater';return g;}
+function fIronBoard(){const g=new THREE.Group(),steel=metal(0x929c9d),cloth=new THREE.MeshStandardMaterial({color:0x729fa1,map:battleWeave,roughness:.9});storageBox(g,2.7,.13,.8,cloth,0,1.28,0);for(const z of [-.25,.25]){vacuumJoint(g,[-1.1,.07,z],[.9,1.22,z],.035,steel);vacuumJoint(g,[1.1,.07,z],[-.9,1.22,z],.035,steel);}const iron=storageBox(g,.38,.24,.6,plastic(0x8d393d),.5,1.47,0);storageBox(g,.40,.04,.63,steel,.5,1.34,0);vacuumJoint(g,[.5,1.57,-.16],[.5,1.68,.10],.04,steel);g.name='Гладильная доска и утюг';g.userData.r=1.65;g.userData.appliance='iron';return g;}
+function fStorageBoxes(){const g=new THREE.Group(),card=new THREE.MeshStandardMaterial({color:0xab8054,roughness:1});storageBox(g,1.7,.8,1.4,card,0,.4,0);storageBox(g,1.25,.65,1.1,card,-.13,1.125,.05);for(const y of [.8,1.45])storageBox(g,.14,.02,1.38,plastic(0xcfb789),-.13,y,0);const label=storageLabel('ПРИБОРЫ');label.position.set(0,.48,-.707);label.rotation.y=Math.PI;g.add(label);g.name='Коробки с приборами';g.userData.r=1.2;return g;}
+function fStorageRack(){const g=new THREE.Group(),steel=metal(0x657574),plank=plastic(0x907453);for(const x of [-1.35,1.35])for(const z of [-.46,.46])vacuumJoint(g,[x,.04,z],[x,3.4,z],.045,steel);for(const y of [.15,1.2,2.25,3.35])storageBox(g,2.8,.10,1,plank,0,y,0);for(const [x,y]of [[-.7,.6],[.65,.6],[-.55,1.65],[.7,2.7]])storageBox(g,.75,.65,.7,plastic(0xab8054),x,y,0);const toaster=storageBox(g,.75,.55,.58,metal(0xb3b0a4),.55,1.53,0);for(const x of [.35,.7])storageBox(g,.08,.015,.42,plastic(0x343334),x,1.81,0);const label=storageLabel('КЛАДОВАЯ');label.position.set(0,3.15,-.515);label.rotation.y=Math.PI;g.add(label);g.name='Стеллаж со старыми приборами';g.userData.r=1.65;return g;}
+
 /* ═══════════ комнаты ═══════════ */
 const W=15,D=11; // пол-размеры комнаты: 30×22
 const КОМНАТЫ=[
@@ -913,6 +973,10 @@ const КОМНАТЫ=[
    [fLamp,12.5,8.5,0],[fPlant,-13,9,0],[fChair,6,-8,0.6],
    [fShoe,-6,-3,0],[fShoe,-5.2,-3.6,0],[fShoe,2,1,0],[fShoe,2.8,1.6,0],
    [fShoe,-2,6,0],[fShoe,8,-2,0],[fShoe,-9.5,0.5,0],[fShoe,5,5.5,0],[fShoe,11,4,0]]},
+ {id:'klad',name:'📦 Кладовая',floor:0x8c8980,wall:0xc2b69c,items:[
+   [fStorageRack,-13,-5,1.5708],[fStorageRack,13,0,-1.5708],[fStorageRack,-4,-9,0],
+   [fOldKirby,-7,-2,.4],[fOldFan,7,-5,-.5],[fOldHeater,7,4,.5],[fIronBoard,-6,5,-.45],
+   [fStorageBoxes,-11,7,0],[fStorageBoxes,3,-7,0],[fStorageBoxes,11,8,0],[fLamp,-12,-8,0]]},
 ];
 
 let препятствия=[],пол=null;
@@ -953,7 +1017,8 @@ const BattleRoomArt = (() => {
     kuh: {wall:'#f3ead1',low:'#9ebbaa',trim:'#f5ecd7',curtain:'#e5c076',wood:'#b48652',ink:'#457b72'},
     van: {wall:'#c9e0de',low:'#8bb5b5',trim:'#efe9d7',curtain:'#dce5d3',wood:'#b4936b',ink:'#477f88'},
     det: {wall:'#fbebd8',low:'#abc4b7',trim:'#f4e3c7',curtain:'#edb7a0',wood:'#c19464',ink:'#c17a64'},
-    prih:{wall:'#efe7d9',low:'#ae7666',trim:'#f2e6d4',curtain:'#c8bba1',wood:'#956747',ink:'#746951'}
+    prih:{wall:'#efe7d9',low:'#ae7666',trim:'#f2e6d4',curtain:'#c8bba1',wood:'#956747',ink:'#746951'},
+    klad:{wall:'#d4c8b0',low:'#8b9b8d',trim:'#e5d9bf',curtain:'#b5b29e',wood:'#987a56',ink:'#536d66'}
   };
   function createKit(id) {
     const theme=themes[id]||themes.gost, group=new THREE.Group();
@@ -1213,11 +1278,12 @@ const BattleRoomArt = (() => {
   function room(roomSpec){
     const id=typeof roomSpec==='string'?roomSpec:roomSpec.id,k=createKit(id);
     const {group,wall,picture,sconce,door,succulent,books,mug,box,material}=k;
-    const rearWindows=id==='gost'?[{x:-7,w:4.4},{x:7,w:4.4}]:id==='prih'?[]:[{x:0,w:id==='van'?4.6:5.1,frosted:id==='van',curtains:id!=='van'}];
+    const rearWindows=id==='gost'?[{x:-7,w:4.4},{x:7,w:4.4}]:(id==='prih'||id==='klad')?[]:[{x:0,w:id==='van'?4.6:5.1,frosted:id==='van',curtains:id!=='van'}];
     const back=wall(W*2+.36,0,-D,0,rearWindows),front=wall(W*2+.36,0,D,Math.PI);
     const left=wall(D*2,-W,0,Math.PI/2,id==='prih'?[{x:-4.5,w:4.2}]:[]);
     const right=wall(D*2,W,0,-Math.PI/2,id==='prih'?[{x:5.7,w:3.8}]:[]);
     door(id==='prih'?back:front,0,id==='prih'?'#738474':k.theme.ink);
+    if(id==='klad'){sconce(back,-8,2.9);sconce(back,8,2.9);sconce(left,-4,2.8);sconce(right,3,2.8);}
     if(id==='gost'){
       picture(back,0,2.71,3.1,1.96,'landscape');picture(left,1.4,2.70,2.12,2.43,'botanical');picture(right,4.0,2.67,2.18,2.48,'botanical');
       picture(front,-7,2.58,2.15,2.3,'sea');picture(front,7,2.58,2.15,2.3,'citrus');
@@ -3173,6 +3239,8 @@ window.__dbg={
         const зр = new Т.Mesh(new Т.SphereGeometry(0.045, 10, 8), мт(0x111111, 0.3)); зр.position.set(s*0.15, 0.5, 0.51); тело.add(зр); }
       const шл = new Т.Mesh(new Т.TorusGeometry(0.3, 0.06, 8, 20, Math.PI*1.1), мт(0x374151, 0.5)); шл.position.set(0, 0.62, -0.2); шл.rotation.y = Math.PI/2; тело.add(шл);
       const щ = new Т.Mesh(new Т.BoxGeometry(0.5, 0.08, 0.16), мт(0x1f2937, 0.5)); щ.position.set(0, 0.06, 0.5); тело.add(щ);
+      const aКреп=new Т.Vector3(0,.25,.38),bКреп=new Т.Vector3(0,.09,.50),dКреп=bКреп.clone().sub(aКреп);
+      const муфта=new Т.Mesh(new Т.CylinderGeometry(.075,.075,dКреп.length()+.04,12),мт(0x374151,.5));муфта.position.copy(aКреп.add(bКреп).multiplyScalar(.5));муфта.quaternion.setFromUnitVectors(new Т.Vector3(0,1,0),dКреп.normalize());тело.add(муфта);
       for (const [x, z] of [[-0.36, 0.25], [0.36, 0.25], [-0.36, -0.25], [0.36, -0.25]]) { const кол = new Т.Mesh(new Т.CylinderGeometry(0.1, 0.1, 0.08, 14), мт(0x111111, 0.7)); кол.rotation.z = Math.PI/2; кол.position.set(x, 0.1, z); тело.add(кол); u.ноги.push(кол); }
       u.голова = купол; u.высота = 1.25; u.верх = 0.95;
     } else {
