@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "f7a2dac1cc";</script>
+  <script>window.__APP_VER = "ee08214420";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -944,16 +944,15 @@ function buildConstruct(color){const g=new THREE.Group();
   const light=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,12),emissive(0xff8a1a,1.2));light.position.set(0,2.05,0);g.add(light);
   for(const x of [-.5,.5])vacuumJoint(g,[x,1.65,.4],[x,2.1,.4],.06,metal(0xffcf3a));g.userData.spin=[];return g;}
 function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color);
-  const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.02);head.castShadow=true;g.add(head);
+  const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.55);head.castShadow=true;g.add(head);
   const tubo=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,2.0,14),metal(0xcfd4dd));tubo.position.set(0,1.1,0.2);tubo.rotation.x=-0.4;g.add(tubo);
   const tankClean=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.7,18),glass(0x4db5ff));tankClean.position.set(0,0.95,0.0);tankClean.rotation.x=-0.4;g.add(tankClean);
   const tankDirty=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.6,18),glass(0xbfc6cf));tankDirty.position.set(0,1.5,0.15);tankDirty.rotation.x=-0.4;g.add(tankDirty);
-  const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,2.04,-.17);motor.castShadow=true;g.add(motor);
-  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.34,.14);handle.rotation.y=Math.PI/2;g.add(handle);
-  [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-.57);g.add(dr);});
-  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-.485);g.add(led);
-
-  g.userData.spin=[];vacuumWheels(g,0.7,.20,0.17);return g;}
+  const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,1.95,0.3);motor.castShadow=true;g.add(motor);
+  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.4,0.6);handle.rotation.y=Math.PI/2;g.add(handle);
+  [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-1.1);g.add(dr);});
+  const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,0.55,-0.86);g.add(led);
+  g.userData.spin=[];vacuumWheels(g,0.7,-0.33,0.17);return g;}
 
 
 
