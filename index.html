@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "d3ebfa26a1";</script>
+  <script>window.__APP_VER = "f7a2dac1cc";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -949,7 +949,7 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   const tankClean=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.7,18),glass(0x4db5ff));tankClean.position.set(0,0.95,0.0);tankClean.rotation.x=-0.4;g.add(tankClean);
   const tankDirty=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.6,18),glass(0xbfc6cf));tankDirty.position.set(0,1.5,0.15);tankDirty.rotation.x=-0.4;g.add(tankDirty);
   const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,2.04,-.17);motor.castShadow=true;g.add(motor);
-  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.25,.25);handle.rotation.y=Math.PI/2;g.add(handle);
+  const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.34,.14);handle.rotation.y=Math.PI/2;g.add(handle);
   [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-.57);g.add(dr);});
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,.25,-.485);g.add(led);
 
