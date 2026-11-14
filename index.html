@@ -92,7 +92,7 @@ body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "c4d2e7b54e";</script>
+  <script>window.__APP_VER = "a9b929550c";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -749,17 +749,27 @@ function buildUpright(color){const g=new THREE.Group();
   vacuumJoint(g,[0,2.20,.20],[0,2.49,.29],.12,metal(0xcfd4dd));
   g.userData.spin=[]; vacuumWheels(g,0.72,0.1,0.22);return g;}
 
-function buildCanister(color){const g=new THREE.Group();
+function buildCanister(color,cyclone=false){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.5,1.2,8,18),plastic(color));body.rotation.z=Math.PI/2;body.position.set(0,0.55,0.35);body.castShadow=true;g.add(body);
-  [[-0.52,0.7],[0.52,0.7]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.14,16),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.24,z);g.add(w);});
+  if(cyclone)vacuumWheels(g,.90,.40,.27);
+  else [[-0.52,0.7],[0.52,0.7]].forEach(([x,z])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.14,16),metal(0x3c4250));w.rotation.z=Math.PI/2;w.position.set(x,0.24,z);g.add(w);});
   const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
   const wand=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,1.7,12),metal(0xcfd4dd));wand.position.set(0,0.9,-0.45);wand.rotation.x=0.7;g.add(wand);
   // 🌀 извилистый шланг: от ВЕРШИНЫ трубы змейкой к ЦЕНТРУ корпуса (просьба Марка)
-  g.add(makeHose([[0,1.5,0.1],[0.24,1.18,0.02],[-0.22,0.86,0.2],[0,0.58,0.34]]));
+  if(cyclone){
+    const rubber=plastic(0x31363e);
+    const wandEnd=[0,1.56,.08], elbow=[.13,1.65,.20], gripEnd=[.42,1.59,.32];
+    vacuumJoint(g,wandEnd,elbow,.112,rubber);
+    vacuumJoint(g,elbow,gripEnd,.118,rubber);
+    const socket=[.83,.74,.12], inlet=[.70,.66,.25];
+    vacuumJoint(g,inlet,socket,.145,rubber);
+    const hose=makeHose([gripEnd,[.68,1.51,.34],[1.07,1.16,-.04],[1.09,.83,-.12],socket],.096);
+    hose.name='Гофрированный шланг';g.add(hose);
+  }else g.add(makeHose([[0,1.5,0.1],[0.24,1.18,0.02],[-0.22,0.86,0.2],[0,0.58,0.34]]));
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.05),emissive(0x35e0ff,1.0));led.position.set(0,0.62,0.95);g.add(led);
 
   vacuumFitTube(wand,[0,.17,-.95],[0,1.56,.08]);
-  g.userData.spin=[];return g;}
+  g.userData.spin ||= [];return g;}
 function buildHandheld(color){const g=new THREE.Group();
   const main=new THREE.Mesh(new THREE.CapsuleGeometry(0.42,0.7,8,16),plastic(color));main.rotation.z=Math.PI/2;main.position.set(0,0.5,0.15);main.castShadow=true;g.add(main);
   const noz=new THREE.Mesh(new THREE.ConeGeometry(0.27,0.8,18),plastic(0x2c2f38));noz.rotation.x=-Math.PI/2;noz.position.set(0,0.5,-0.75);g.add(noz);
@@ -838,13 +848,26 @@ function buildMop(color){const g=new THREE.Group();g.userData.cordless=true;
   const pad=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.05,0.1,40),plastic(0xeaf6ff));pad.position.y=0.06;g.add(pad);
   [-0.34,0.34].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.09,14,14),emissive(0x66ccff,0.8));e.position.set(x,0.42,-0.8);g.add(e);});
   g.userData.spin=[pad];vacuumWheels(g,1.01,0,0.14);return g;}
-function buildCyclone(color){const g=new THREE.Group();
-  const base=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.34,1.0),darkMat);base.position.set(0,0.24,-0.2);base.castShadow=true;g.add(base);
-  const bin=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,1.6,24),glass(0xffe27a));bin.position.set(0,1.1,0.2);g.add(bin);
-  const core=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,1.5,16),plastic(color));core.position.set(0,1.1,0.2);g.add(core);
-  const top=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.5,0.3,24),plastic(color));top.position.set(0,2.0,0.2);g.add(top);
-  const noz=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.16,0.5),darkMat);noz.position.set(0,0.12,-0.95);g.add(noz);
-  vacuumJoint(g,[0,.22,-.58],[0,.16,-.95],.12,darkMat);g.userData.spin=[];vacuumWheels(g,0.64,0.4,0.2);return g;}
+function buildCyclone(color){
+  const g=buildCanister(color,true),bin=new THREE.Group();
+  bin.name='Циклонный пылесборник';bin.position.set(-.48,.88,.36);g.add(bin);
+  const accent=plastic(color),rubber=plastic(0x343b43);
+  function ring(top,bottom,height,y,material){
+    const mesh=new THREE.Mesh(new THREE.CylinderGeometry(top,bottom,height,32),material);
+    mesh.position.y=y; mesh.castShadow=!material.transparent;bin.add(mesh);return mesh;
+  }
+  ring(.38,.34,.14,.01,rubber);
+  ring(.355,.32,.62,.36,glass(0xaedbef));
+  ring(.21,.075,.46,.38,accent);
+  ring(.26,.20,.12,.60,metal(0xa7b6bf));
+  ring(.38,.38,.12,.71,accent);
+  // Ручка для переноски опирается обоими концами на крышку.
+  const points=[[-.24,.74,0],[-.22,.93,0],[-.14,1,0],[.14,1,0],[.22,.93,0],[.24,.74,0]];
+  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+  const handle=new THREE.Mesh(new THREE.TubeGeometry(curve,24,.045,10,false),rubber);
+  handle.name='Ручка для переноски';bin.add(handle);
+  return g;
+}
 function buildSteam(color){const g=new THREE.Group();
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.16,0.9),plastic(0x2c2f38));head.position.set(0,0.12,-0.6);head.castShadow=true;g.add(head);
   const tri=new THREE.Mesh(new THREE.ConeGeometry(0.7,0.5,3),plastic(color));tri.rotation.x=-Math.PI/2;tri.position.set(0,0.3,-0.5);g.add(tri);
