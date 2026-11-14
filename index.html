@@ -35,12 +35,7 @@
   #big{position:fixed;left:0;right:0;top:26%;text-align:center;font-size:clamp(24px,6vw,52px);font-weight:900;z-index:25;
     text-shadow:0 3px 0 #04122e,0 0 26px #000;pointer-events:none;white-space:pre-line;transition:opacity .3s}
   #tip{position:fixed;left:0;right:0;bottom:12px;text-align:center;font-size:clamp(12px,2vw,16px);opacity:.8;z-index:20;pointer-events:none}
-  #dpad{position:fixed;left:18px;bottom:18px;z-index:22;display:none;
-    grid-template-columns:repeat(3,64px);grid-auto-rows:64px;gap:8px}
-  body.touchy #dpad{display:grid}
-  .tb{width:64px;height:64px;border-radius:50%;background:#1e40afcc;border:2px solid #93c5fd66;color:#fff;font-size:26px;
-    display:flex;align-items:center;justify-content:center;font-weight:900}
-  .tb:active{background:#2563eb}
+  #freeExit { pointer-events:auto; color:white; cursor:pointer; }
   .mjoy{position:fixed;width:104px;height:104px;border-radius:50%;background:#1e40af55;border:3px solid #93c5fd66;
     z-index:17;display:none;touch-action:none}
   .mjoy .mknob{position:absolute;left:28px;top:28px;width:48px;height:48px;border-radius:50%;
@@ -83,7 +78,7 @@
  #colorRow{grid-row:3/5;gap:5px;padding:4px}.sw{width:26px;height:26px}#garageBack{grid-row:5;padding:9px 18px;min-width:170px;font-size:17px}
 }
 
-body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
+body:not(.playing) .mjoy{display:none!important}
 </style>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -97,7 +92,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "bd5baa1665";</script>
+  <script>window.__APP_VER = "c4d2e7b54e";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -108,6 +103,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <p class="sub">Выбери пылесос — и вперёд убирать быстрее всех!</p>
   <button class="btn" id="btnTrain">🏋 ТРЕНИРОВКА</button>
   <button class="btn" id="btnParty">🎉 ВЕЧЕРИНКА</button>
+  <button class="btn" id="btnFree">🏠 СВОБОДНАЯ УБОРКА</button>
   <button class="btn dim" id="btnGarage">🔧 ГАРАЖ — выбрать пылесос</button>
   <button class="btn dim" id="btnAchs">🏆 ДОСТИЖЕНИЯ</button>
 </div>
@@ -164,14 +160,11 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
 <div id="hud" class="hidden">
   <div class="pane" id="info"></div>
   <div class="pane" id="board"></div>
+  <button class="pane hidden" id="freeExit">В меню</button>
 </div>
 <div id="big"></div>
 <div id="tip"></div>
 <div id="splitBoxes"></div>
-<div id="dpad">
-  <div></div><div class="tb" id="bU">▲</div><div></div>
-  <div class="tb" id="bL">◀</div><div class="tb" id="bD">▼</div><div class="tb" id="bR">▶</div>
-</div>
 <!-- 🕹 джойстики для игры с друзьями (по одному на игрока, в его четверти экрана) -->
 <div class="mjoy" id="mjoy0"><div class="mknob"></div></div>
 <div class="mjoy" id="mjoy1"><div class="mknob"></div></div>
@@ -622,10 +615,37 @@ const Snd={ctx:null,motorG:null,motorO:null,airG:null,
   horn(){this.tone(440,0.5,'sawtooth',0.13,430);},
   ach(){[784,988,1319].forEach((f,i)=>setTimeout(()=>this.tone(f,0.22,'triangle',0.15),i*110));},
   /* 🎵 тематическая музыка «весёлая уборка»: мелодия + бас + шорох щётки (просьба Марка) */
-  musI:null,
+  musI:null, calmBus:null,
+  calmMusic(){
+    const ctx=this.ctx, bus=ctx.createGain();
+    bus.gain.value=.75;bus.connect(ctx.destination);this.calmBus=bus;
+    const chords=[[146.83,220,277.18,329.63],[123.47,185,246.94,293.66],
+      [98,196,246.94,293.66],[110,164.81,220,293.66]];
+    const melody=[2,3,null,1, 3,null,2,1, 1,2,3,null, 3,2,null,1];
+    let step=0,when=ctx.currentTime+.04;
+    function note(f,t,len,volume){
+      const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.09);
+      g.gain.exponentialRampToValueAtTime(.0001,t+len);
+      o.connect(g);g.connect(bus);o.start(t);o.stop(t+len+.02);
+      o.onended=()=>{o.disconnect();g.disconnect();};
+    }
+    function schedule(){
+      when=Math.max(when,ctx.currentTime+.015);
+      while(when<ctx.currentTime+.35){
+        const chord=chords[Math.floor(step/4)%4], n=melody[step%melody.length];
+        if(step%4===0)chord.forEach((f,i)=>note(f,when+i*.05,2.55,i===0?.055:.021));
+        if(n!==null)note(chord[n]*2,when+.08,1.18,.042);
+        when+=.72;step++;
+      }
+    }
+    schedule();this.musI=setInterval(schedule,120);
+  },
   music(on,fast){if(on&&!this.ctx)this.init();
     if(this.musI){clearInterval(this.musI);this.musI=null;}
+    if(this.calmBus){this.calmBus.disconnect();this.calmBus=null;}
     if(!on||!this.ctx)return;
+    if(fast==='calm'){this.calmMusic();return;}
     const mel=[659,0,784,0,880,0,784,659, 587,0,523,0,587,659,784,0,
                659,0,880,0,1047,0,880,784, 659,587,523,0,587,0,523,0];
     const bass=[131,131,110,110,87,87,98,98];
@@ -1415,22 +1435,38 @@ const BattleRoomArt = (() => {
       for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*w/4,uv.getY(i)*h/4);
       mesh(parent,geo,plaster,x,y,-.19);
     }
-    function wall(length,x,z,rotation=0,windows=[]){
+    function wall(length,x,z,rotation=0,windows=[],проёмы=[]){
       const g=anchor(x,z,rotation),height=4.4;
-      let left=-length/2;
-      windows.slice().sort((a,b)=>a.x-b.x).forEach(win=>{
+      function панель(start,end){
+        const w=end-start, mid=(start+end)/2;
+        if(w<.001)return;
+        const geo=new THREE.BoxGeometry(w,1.2,.045),uv=geo.attributes.uv;
+        for(let i=0;i<uv.count;i++)uv.setX(i,uv.getX(i)*w/8);
+        mesh(g,geo,id==='van'?material(theme.low,.3):panelMat,mid,.61,.023,false);
+        box(g,w,.075,.10,trim,mid,1.25,.04,false);
+        box(g,w,.17,.115,trim,mid,.09,.05,false);
+      }
+      const отверстия=windows.concat(проёмы.map(x=>({x,w:3.2,h:3.45,bottom:0,проход:true})));
+      let left=-length/2, крайПанели=left;
+      for(const win of отверстия.sort((a,b)=>a.x-b.x)){
         const start=win.x-win.w/2,end=win.x+win.w/2,bottom=win.bottom??1.45,top=bottom+(win.h??2.25);
         wallPiece(g,(left+start)/2,height/2,start-left,height);
         wallPiece(g,win.x,bottom/2,win.w,bottom);
         wallPiece(g,win.x,(top+height)/2,win.w,height-top);
-        left=end;windowModel(g,win.x,win.w,bottom,win.h??2.25,win.curtains!==false,!!win.frosted);
-      });
+        left=end;
+        if(win.проход){
+          панель(крайПанели,start); крайПанели=end;
+          for(const side of [-1,1]){
+            box(g,.12,top,.48,trim,win.x+side*win.w/2,top/2,-.12);
+            box(g,.14,top,4.8,plaster,win.x+side*(win.w/2+.06),top/2,-2.6);
+          }
+          box(g,win.w+.18,.11,.48,trim,win.x,top,-.12);
+          box(g,win.w,.07,5,wood,win.x,-.035,-2.5);
+          box(g,win.w,3.48,.14,plaster,win.x,1.74,-5);
+        }else windowModel(g,win.x,win.w,bottom,win.h??2.25,win.curtains!==false,!!win.frosted);
+      }
       wallPiece(g,(left+length/2)/2,height/2,length/2-left,height);
-      const panelGeo=new THREE.BoxGeometry(length,1.2,.045),uv=panelGeo.attributes.uv;
-      for(let i=0;i<uv.count;i++)uv.setX(i,uv.getX(i)*length/8);
-      mesh(g,panelGeo,id==='van'?material(theme.low,.3):panelMat,0,.61,.023,false);
-      box(g,length,.075,.10,trim,0,1.25,.04,false);
-      box(g,length,.17,.115,trim,0,.09,.05,false);
+      панель(крайПанели,length/2);
       box(g,length,.105,.17,trim,0,4.28,.03,false);
       box(g,length,.055,.24,trim,0,4.39,.005,false);
       return g;
@@ -1600,10 +1636,16 @@ const BattleRoomArt = (() => {
     const id=typeof roomSpec==='string'?roomSpec:roomSpec.id,k=createKit(id);
     const {group,wall,picture,sconce,door,succulent,books,mug,box,material}=k;
     const rearWindows=id==='gost'?[{x:-7,w:4.4},{x:7,w:4.4}]:(id==='prih'||id==='klad')?[]:[{x:0,w:id==='van'?4.6:5.1,frosted:id==='van',curtains:id!=='van'}];
-    const back=wall(W*2+.36,0,-D,0,rearWindows),front=wall(W*2+.36,0,D,Math.PI);
+    const проход=roomSpec.apartment?квартирныеДвери(id)[0]:null;
+    const back=wall(W*2+.36,0,-D,0,rearWindows,проход && id==='prih'?[проход.x]:[]);
+    const front=wall(W*2+.36,0,D,Math.PI,[],проход && id!=='prih'?[-проход.x]:[]);
     const left=wall(D*2,-W,0,Math.PI/2,id==='prih'?[{x:-4.5,w:4.2}]:[]);
     const right=wall(D*2,W,0,-Math.PI/2,id==='prih'?[{x:5.7,w:3.8}]:[]);
-    door(id==='prih'?back:front,0,id==='prih'?'#738474':k.theme.ink);
+    if(roomSpec.apartment) {
+      const d=квартирныеДвери(id)[0], стена=id==='prih'?back:front;
+      const localX=id==='prih'?d.x:-d.x;
+      табличкаДвери(стена,localX,'Коридор');
+    } else door(id==='prih'?back:front,0,id==='prih'?'#738474':k.theme.ink);
     if(id==='klad'){sconce(back,-8,2.9);sconce(back,8,2.9);sconce(left,-4,2.8);sconce(right,3,2.8);}
     if(id==='gost'){
       picture(back,0,2.71,3.1,1.96,'landscape');picture(left,1.4,2.70,2.12,2.43,'botanical');picture(right,4.0,2.67,2.18,2.48,'botanical');
@@ -1654,8 +1696,8 @@ const BattleRoomArt = (() => {
       k.wallShelf(left,-5.8,2.28,1.8);books(left,-5.77,2.333,.23,1.15);
     }else{
       // Entry joinery and paired artwork make the hall read as a lived-in apartment.
-      picture(back,-6.3,2.65,2.35,2.61,'home');picture(back,6.3,2.65,2.35,2.61,'botanical');
-      sconce(back,-2.05,2.75);sconce(back,2.05,2.75);
+      if(!roomSpec.apartment || id!=='prih'){picture(back,-6.3,2.65,2.35,2.61,'home');picture(back,6.3,2.65,2.35,2.61,'botanical');}
+      if(!roomSpec.apartment || id!=='prih'){sconce(back,-2.05,2.75);sconce(back,2.05,2.75);}
       picture(front,-5.5,2.65,2.32,2.47,'landscape');picture(front,5.5,2.65,2.32,2.47,'home');
       k.wallShelf(left,6.1,2.18,2.7);
       books(left,5.46,2.233,.21,1.1);succulent(left,6.65,2.233,.23,1.03);
@@ -1689,7 +1731,37 @@ const BattleRoomArt = (() => {
     }
     world.add(group);return group;
   }
-  return {room,corridor};
+  function табличкаДвери(стена,x,текст){
+    const знак=storageLabel(текст); знак.scale.set(3.25,3.25,1);
+    знак.position.set(x,3.89,.24); стена.add(знак);
+  }
+  function этаж(id){
+    const k=createKit(id==='hall1'?'prih':'spal'),{group,wall,door,box,material}=k;
+    const план=комнатыЭтажей[id];
+    const left=wall(длинаХолла*2,-ширинаХолла,0,Math.PI/2,[],план.filter(d=>d.x<0).map(d=>-d.z));
+    const right=wall(длинаХолла*2,ширинаХолла,0,-Math.PI/2,[],план.filter(d=>d.x>0).map(d=>d.z));
+    const back=wall(ширинаХолла*2,0,-длинаХолла);
+    const front=wall(ширинаХолла*2,0,длинаХолла,Math.PI,id==='hall1'?[]:[{x:0,w:3.2}],id==='hall1'?[0]:[]);
+    for(const d of комнатыЭтажей[id]){
+      const сторона=d.торец?front:d.x<0?left:right;
+      const x=d.торец?0:d.x<0?-d.z:d.z;
+      табличкаДвери(сторона,x,имяКомнаты(d.to).split(' ').slice(1).join(' '));
+    }
+    const дерево=material('#ac835b'), перила=material('#735744');
+    const спуск=id==='hall2';
+    for(let i=0;i<7;i++){
+      const h=(i+1)*.17, z=-длинаХолла+4.6-i*.58;
+      // Наверху начало лестницы вровень с площадкой, нижние ступени видны по направлению спуска.
+      const y=спуск?(7-i)*.14:h;
+      box(group,3.15,y,.59,дерево,0,y/2,z);
+      box(group,3.15,.025,.07,k.trim,0,y+.008,z+.24);
+      if(i%2===0)for(const sign of [-1,1])box(group,.10,.85,.10,перила,sign*1.67,y+.42,z);
+    }
+    for(const sign of [-1,1])k.rod(group,[sign*1.67,спуск?1.86:1.03,-длинаХолла+4.6],[sign*1.67,спуск?1:2.04,-длинаХолла+1.12],.065,перила);
+    табличкаДвери(back,0,спуск?'↓ 1 этаж':'↑ 2 этаж');
+    world.add(group);
+  }
+  return {room,corridor,этаж};
 })();
 function decorateBattleRoom(room){return BattleRoomArt.room(room);}
 function decorateBattleCorridor(width,length){return BattleRoomArt.corridor(width,length);}
@@ -1701,13 +1773,18 @@ const dustGeo=new THREE.SphereGeometry(0.16,10,8);dustGeo.userData.battleKeep=tr
 const dustMat=new THREE.MeshStandardMaterial({color:0xd9cfa8,emissive:0x8a815e,emissiveIntensity:0.5,roughness:0.9});
 dustMat.userData.battleKeep=true;
 function свободно(x,z,pad=1.0){
-  if(Math.abs(x)>W-1||Math.abs(z)>D-1)return false;
+  if(Math.abs(x)>границаX-.1||Math.abs(z)>границаZ-.1)return false;
+  if(комнатыЭтажей[режим?.roomId] && z<-длинаХолла+5 && Math.abs(x)<2)return false;
   return !препятствия.some(o=>Math.hypot(o.x-x,o.z-z)<o.r+pad);}
 function spawnDust(n){
   for(let i=0;i<n;i++){let x,z,tries=0;
-    do{x=rnd(-W+1.5,W-1.5);z=rnd(-D+1.5,D-1.5);}while(!свободно(x,z)&&++tries<60);
-    const m=new THREE.Mesh(dustGeo,dustMat);m.position.set(x,0.14,z);m.scale.setScalar(rnd(0.7,1.3));world.add(m);
-    пыль.push({x,z,mesh:m,taken:false});}}
+    do{x=rnd(-границаX+.6,границаX-.6);z=rnd(-границаZ+.6,границаZ-.6);}while(!свободно(x,z)&&++tries<60);
+    addDust(x,z,rnd(0.7,1.3));}}
+function addDust(x,z,scale){
+  const mesh=new THREE.Mesh(dustGeo,dustMat);
+  mesh.position.set(x,.14,z); mesh.scale.setScalar(scale); world.add(mesh);
+  пыль.push({x,z,mesh,taken:false});
+}
 function живаяПыль(){return пыль.filter(d=>!d.taken);}
 
 /* ═══════════ машины (игрок и боты) ═══════════ */
@@ -1738,25 +1815,15 @@ function placeCars(){
 const keys={};
 addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
 addEventListener('keyup',e=>{keys[e.code]=false;});
-const touchKey=(id,code)=>{const el=$(id);
-  el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;Snd.init();});
-  el.addEventListener('pointerup',()=>keys[code]=false);
-  el.addEventListener('pointercancel',()=>keys[code]=false);
-  el.addEventListener('pointerleave',()=>keys[code]=false);};
-touchKey('bU','ArrowUp');touchKey('bL','ArrowLeft');touchKey('bR','ArrowRight');touchKey('bD','ArrowDown');
-if('ontouchstart' in window)document.body.classList.add('touchy');
-
 /* 🕹 МУЛЬТИ-ТАЧ ДЖОЙСТИКИ для игры с друзьями: у каждого игрока свой в его четверти экрана */
 let сДрузьями=false;
 const joyVec=[{x:0,y:0},{x:0,y:0},{x:0,y:0},{x:0,y:0}];
 const joyPtr=[null,null,null,null];   // какой палец держит джойстик
 function showJoysticks(){
-  const touch=matchMedia('(pointer:coarse)').matches;
-  const друж=режим&&режим.type==='party'&&режим.friends&&touch;
-  $('dpad').style.display=друж?'none':'';   // '' → управление CSS (dpad для одиночной игры)
+  const touch=matchMedia('(any-pointer:coarse)').matches || navigator.maxTouchPoints>0;
   for(let s=0;s<4;s++){
     const el=$('mjoy'+s);
-    if(друж&&s<cars.length){ el.style.display='block'; placeJoy(s); }
+    if(touch && cars[s] && !cars[s].isBot){ el.style.display='block'; placeJoy(s); }
     else el.style.display='none';
   }
 }
@@ -1776,11 +1843,16 @@ function placeJoy(s){
   el.dataset.cx = left + R/2; el.dataset.cy = top + R/2;
 }
 for(let s=0;s<4;s++){ const el=$('mjoy'+s);
-  el.addEventListener('pointerdown',e=>{e.preventDefault();Snd.init();joyPtr[s]=e.pointerId;moveJoy(s,e);});
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(joyPtr[s]!==null)return;Snd.init();joyPtr[s]=e.pointerId;el.setPointerCapture(e.pointerId);moveJoy(s,e);});
 }
 addEventListener('pointermove',e=>{ for(let s=0;s<4;s++) if(joyPtr[s]===e.pointerId) moveJoy(s,e); },{passive:false});
-addEventListener('pointerup',e=>{ for(let s=0;s<4;s++) if(joyPtr[s]===e.pointerId){ joyPtr[s]=null; joyVec[s].x=0;joyVec[s].y=0;
-  const k=$('mjoy'+s).querySelector('.mknob'); k.style.left='28px';k.style.top='28px'; } });
+function releaseJoy(s){
+  joyPtr[s]=null; joyVec[s].x=0; joyVec[s].y=0;
+  const k=$('mjoy'+s).querySelector('.mknob'); k.style.left='28px'; k.style.top='28px';
+}
+function endJoy(e){ const s=joyPtr.indexOf(e.pointerId); if(s>=0)releaseJoy(s); }
+addEventListener('pointerup',endJoy); addEventListener('pointercancel',endJoy);
+addEventListener('blur',()=>{for(const code in keys)keys[code]=false;joyPtr.forEach((_,s)=>releaseJoy(s));});
 function moveJoy(s,e){
   const el=$('mjoy'+s), cx=+el.dataset.cx, cy=+el.dataset.cy;
   let dx=e.clientX-cx, dy=e.clientY-cy; const L=Math.hypot(dx,dy)||1, R=52;
@@ -1809,10 +1881,20 @@ function driveCar(c,dt,газ,тормоз,руль){
   c.yaw+=руль*2.6*dt*clamp(Math.abs(c.v)/3,0.15,1)*Math.sign(c.v||1);
   const dx=-Math.sin(c.yaw),dz=-Math.cos(c.yaw);
   c.x+=dx*c.v*dt;c.z+=dz*c.v*dt;
-  // стены
+  // До ограничения стен проверяем только небольшой порог подписанной двери.
+  let пределX=границаX, пределZ=границаZ;
+  if(режим?.type==='free'){
+    for(const d of квартирныеДвери(режим.roomId)){
+      if(уПорога(c,d)){ войтиВКомнату(d.to,режим.roomId); return false; }
+      if(!d.лестница){
+        if(d.сторона && Math.abs(c.z-d.z)<1.12 && c.x*d.x>0)пределX=Math.abs(d.x)+.3;
+        if(!d.сторона && Math.abs(c.x-d.x)<1.12 && c.z*d.z>0)пределZ=Math.abs(d.z)+.3;
+      }
+    }
+  }
   let hit=false;
-  if(Math.abs(c.x)>границаX){c.x=clamp(c.x,-границаX,границаX);c.v*=0.4;hit=true;}
-  if(Math.abs(c.z)>границаZ){c.z=clamp(c.z,-границаZ,границаZ);c.v*=0.4;hit=true;}
+  if(Math.abs(c.x)>пределX){c.x=clamp(c.x,-пределX,пределX);c.v*=0.4;hit=true;}
+  if(Math.abs(c.z)>пределZ){c.z=clamp(c.z,-пределZ,пределZ);c.v*=0.4;hit=true;}
   // мебель
   for(const o of препятствия){const d=Math.hypot(o.x-c.x,o.z-c.z);
     if(d<o.r+0.65){const px=(c.x-o.x)/(d||1),pz=(c.z-o.z)/(d||1);
@@ -1821,7 +1903,7 @@ function driveCar(c,dt,газ,тормоз,руль){
   // 💥 толчок от соперника (внешний импульс), плавно затухает
   c.x+=c.pvx*dt;c.z+=c.pvz*dt;
   const kп=Math.pow(0.08,dt);c.pvx*=kп;c.pvz*=kп;
-  c.x=clamp(c.x,-границаX,границаX);c.z=clamp(c.z,-границаZ,границаZ);
+  c.x=clamp(c.x,-пределX,пределX);c.z=clamp(c.z,-пределZ,пределZ);
   if(hit&&!c.hitCd){c.hitCd=0.5;c.hits++;if(!c.isBot)Snd.bump();}
   c.hitCd=Math.max(0,(c.hitCd||0)-dt);
   // 🧽 пылесос натирает пол до блеска (моющий — заметно шире!)
@@ -1857,6 +1939,9 @@ function collectDust(c){
       d.mesh.scale.setScalar(0.01);world.remove(d.mesh);
       if(!c.isBot)Snd.blip();
       if(c===cars[0]){save.stat.dust++;checkAch();}   // достижения — владельцу телефона
+      if(режим?.type==='free' && пыль.every(d=>d.taken)){
+        пыль=[];spawnDust(32);
+      }
       if(режим&&режим.respawn)spawnDust(1);
       return true;}}
   return false;}
@@ -1866,6 +1951,7 @@ let bigT=0;
 function bigMsg(t,dur=2.4){$('big').textContent=t;$('big').style.opacity=1;bigT=dur;}
 function showScreen(id){['menu','garage','setup','results','achs'].forEach(s=>$(s).classList.toggle('hidden',s!==id));
   $('hud').classList.toggle('hidden',!!id);
+  $('freeExit').classList.toggle('hidden',!!id || режим?.type!=='free');
   document.body.classList.toggle('playing',!id);}
 function goFullscreen(){const el=document.documentElement;
   if(!document.fullscreenElement&&el.requestFullscreen)el.requestFullscreen().catch(()=>{});}
@@ -1896,8 +1982,87 @@ function resolveCarCollisions(){
     }
   }
 }
-function clearGame(){cars.forEach(c=>{world.remove(c.g);battleDispose(c.g);});cars=[];пыль=[];battleArt.paused=false;battleArt.manualView=false;}
+function clearGame(){joyPtr.forEach((_,s)=>releaseJoy(s));cars.forEach(c=>{world.remove(c.g);battleDispose(c.g);});cars=[];пыль=[];battleArt.paused=false;battleArt.manualView=false;}
 
+const ширинаХолла=4.3, длинаХолла=15;
+// От входа к лестнице: кухня с кладовой по левую руку, гостиная по правую.
+const комнатыЭтажей={
+  hall1:[
+    {to:'prih',x:0,z:длинаХолла,торец:true},
+    {to:'kuh',x:-ширинаХолла,z:5,сторона:true},
+    {to:'gost',x:ширинаХолла,z:5,сторона:true},
+    {to:'klad',x:-ширинаХолла,z:-4,сторона:true}
+  ],
+  hall2:[
+    {to:'van',x:ширинаХолла,z:-5,сторона:true},
+    {to:'spal',x:-ширинаХолла,z:5,сторона:true},
+    {to:'det',x:ширинаХолла,z:7,сторона:true}
+  ]
+};
+function имяКомнаты(id){
+  if(комнатыЭтажей[id])return 'Коридор · '+(id==='hall1'?'1':'2')+' этаж';
+  return КОМНАТЫ.find(room=>room.id===id).name;
+}
+function квартирныеДвери(id){
+  if(комнатыЭтажей[id]){
+    const двери=[...комнатыЭтажей[id]];
+    двери.push({to:id==='hall1'?'hall2':'hall1',x:0,z:-длинаХолла+4.35,лестница:true});
+    return двери;
+  }
+  const этаж=комнатыЭтажей.hall1.some(d=>d.to===id)?'hall1':'hall2';
+  return [{x:id==='det'?-4:0,z:id==='prih'?-D:D,to:этаж}];
+}
+function уПорога(c,d){
+  if(d.лестница)return Math.abs(c.x-d.x)<1.55 && c.z<d.z;
+  if(d.сторона)return Math.abs(c.z-d.z)<1.12 && c.x*Math.sign(d.x)>Math.abs(d.x)+.12;
+  return Math.abs(c.x-d.x)<1.12 && c.z*Math.sign(d.z)>Math.abs(d.z)+.12;
+}
+function построитьХолл(id){
+  battleClearWorld();battleLighting(id==='hall1'?'prih':'spal');препятствия=[];блёстки=[];
+  границаX=ширинаХолла-.7;границаZ=длинаХолла-.75;
+  пол=makeDustFloor(ширинаХолла*2,длинаХолла*2,0xa87c56);world.add(пол);
+  BattleRoomArt.этаж(id);
+}
+function войтиВКомнату(id,из){
+  if(из){
+    режим.комнаты.set(из,{
+      покрытие:пылевойПол.cv, клетки:пылевойПол.клетки,
+      пыль:живаяПыль().map(d=>[d.x,d.z,d.mesh.scale.x])
+    });
+  }
+  const room=КОМНАТЫ.find(r=>r.id===id);
+  if(room)buildRoom({...room,apartment:true});else построитьХолл(id);
+  пыль=[]; режим.roomId=id;
+  const прошлое=режим.комнаты.get(id);
+  if(прошлое){
+    const p=пылевойПол; p.ctx.clearRect(0,0,p.cv.width,p.cv.height);
+    p.ctx.drawImage(прошлое.покрытие,0,0); p.tex.needsUpdate=true; p.клетки=прошлое.клетки;
+    for(const d of прошлое.пыль)addDust(...d);
+    режим.комнаты.delete(id);
+  } else spawnDust(32);
+  const car=cars[0], дверь=квартирныеДвери(id).find(d=>d.to===из);
+  car.x=дверь?.x ?? 0; car.z=дверь?.z ?? 5; car.yaw=0;
+  if(дверь?.сторона){
+    car.x-=Math.sign(дверь.x)*2.1;car.yaw=Math.sign(дверь.x)*Math.PI/2;
+  } else if(дверь){
+    car.z-=Math.sign(дверь.z)*2.55;car.yaw=дверь.z<0?Math.PI:0;
+  }
+  car.v=0;car.pvx=0;car.pvz=0;car.hitCd=0;
+  car.g.position.set(car.x,0,car.z);car.g.rotation.y=car.yaw;world.add(car.g);
+  if(room)save.stat.rooms[id]=1; saveNow(); checkAch();
+  $('info').textContent=имяКомнаты(id)+' · 🧹 '+car.collected;
+  $('board').textContent=''; bigMsg(имяКомнаты(id),1.1);
+  $('tip').textContent=room?'Проезжай в проём с табличкой «Коридор»':'Выбирай проём или заезжай на лестницу в конце коридора';
+}
+function startFree(){
+  clearGame();
+  режим={type:'free',комнаты:new Map(),roomId:'prih'};
+  save.stat.models[save.model]=1;
+  makeCar(save.model,save.color,false,ИМЯ_ИГРОКА);
+  время=0;countdown=0;state='play';
+  войтиВКомнату('prih',null); showScreen(''); buildSplitBoxes(); showJoysticks();
+  goFullscreen(); Snd.init(); Snd.music(true,'calm');
+}
 function startTraining(roomId,variant){
   clearGame();const room=КОМНАТЫ.find(r=>r.id===roomId);
   buildRoom(room);spawnDust(40);
@@ -1908,7 +2073,7 @@ function startTraining(roomId,variant){
   state='play';showScreen('');goFullscreen();Snd.init();Snd.music(true);
   buildSplitBoxes();showJoysticks();
   bigMsg(room.name+'\n'+(variant==='timer'?'⏱ 60 секунд — собери побольше!':'🏁 Собери ВСЮ пыль на время!'),3);
-  $('tip').textContent='WASD или стрелки — ехать. Пыль засасывается сама!';}
+  $('tip').textContent=navigator.maxTouchPoints?'Джойстик — ехать. Пыль засасывается сама!':'WASD или стрелки — ехать. Пыль засасывается сама!';}
 
 function startParty(roomId,n){
   clearGame();const room=КОМНАТЫ.find(r=>r.id===roomId);
@@ -2110,6 +2275,7 @@ $('btnAchs').onclick=()=>{renderAchs();showScreen('achs');Snd.init();};
 $('achBack').onclick=()=>showScreen('menu');
 $('vTimer').onclick=()=>{выборВарианта='timer';renderSetup();};
 $('vClear').onclick=()=>{выборВарианта='clear';renderSetup();};
+$('btnFree').onclick=startFree;
 $('btnTrain').onclick=()=>{режимSetup='train';renderSetup();showScreen('setup');Snd.init();};
 $('btnParty').onclick=()=>{режимSetup='party';renderSetup();showScreen('setup');Snd.init();};
 $('btnGarage').onclick=()=>{renderGarage();showScreen('garage');Snd.init();};
@@ -2117,7 +2283,8 @@ $('garageBack').onclick=()=>showScreen('menu');
 $('setupBack').onclick=()=>showScreen('menu');
 $('btnGo').onclick=()=>{if(режимSetup==='train')startTraining(выборКомнаты,выборВарианта);else startParty(выборКомнаты,выборИгроков);};
 $('resAgain').onclick=()=>{if(режим.type==='train')startTraining(режим.roomId,режим.variant);else startParty(режим.roomId,режим.n);};
-$('resMenu').onclick=()=>{state='menu';clearGame();battleClearWorld();Snd.music(false);
+$('freeExit').onclick=()=>{ saveNow(); $('resMenu').click(); };
+$('resMenu').onclick=()=>{state='menu';режим=null;$('tip').textContent='';$('big').style.opacity=0;clearGame();battleClearWorld();Snd.music(false);
   $('splitBoxes').innerHTML='';for(let s=0;s<4;s++)$('mjoy'+s).style.display='none';showScreen('menu');};
 showScreen('menu');
 
@@ -2154,14 +2321,14 @@ function tick(){
             if(!c.isBot)bigMsg('🏁 ФИНИШ! '+форматВремя(время),1.6);}});
           if(cars.every(c=>c.finished)||время>75)finishPartyGame();}}
       // HUD
-      const info=режим.type==='train'
+      const info=режим.type==='free' ? имяКомнаты(режим.roomId)+' · 🧹 '+me.collected+' · ✨ '+Math.round(чистота()*100)+'%' : режим.type==='train'
         ?(режим.variant==='timer'?'⏱ '+форматВремя(Math.max(0,время)):'🏁 '+форматВремя(время))+' · 🧹 '+ (cars[0]?cars[0].collected:0)+(режим.variant==='clear'?' / '+пыль.length:'')+' · ✨ '+Math.round(чистота()*100)+'%'
         :'ИГРА '+режим.game+'/3'+(режим.game===2?' · ⏱ '+форматВремя(Math.max(0,время)):'')+(режим.game===3?' · 💥 '+cars[0].hits:'');
       $('info').textContent=info;
       if(режим.type==='party'){
         $('board').innerHTML=cars.map(c=>c.name+': '+(режим.game===3?(c.finished?'🏁':'💥'+c.hits):c.collected)+
           ' <span style="opacity:.6">('+режим.scores[c.name]+' очк)</span>').join('<br>');}
-      else $('board').textContent=ИМЯ_ИГРОКА;
+      else if(режим.type!=='free') $('board').textContent=ИМЯ_ИГРОКА;
     }
     // пыль подмигивает, блёстки кружатся
     const t=performance.now()/1000;
