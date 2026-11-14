@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "4ae72695bd";</script>
+  <script>window.__APP_VER = "bd5baa1665";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -946,22 +946,20 @@ function buildConstruct(color){const g=new THREE.Group();
 function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color);
   const head=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.3,0.9),plastic(0x2c2f38));head.position.set(0,0.2,-0.55);head.castShadow=true;g.add(head);
   const tubo=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,2.0,14),metal(0xcfd4dd));tubo.position.set(0,1.1,0.2);tubo.rotation.x=-0.4;g.add(tubo);
-  const tankClean=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.7,18),glass(0x4db5ff));tankClean.position.set(0,0.95,0.0);tankClean.rotation.x=-0.4;g.add(tankClean);
-  const tankDirty=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.6,18),glass(0xbfc6cf));tankDirty.position.set(0,1.5,0.15);tankDirty.rotation.x=-0.4;g.add(tankDirty);
   const motor=new THREE.Mesh(new THREE.SphereGeometry(0.32,20,18),bodyM);motor.position.set(0,1.95,0.3);motor.castShadow=true;g.add(motor);
   const handle=new THREE.Mesh(new THREE.TorusGeometry(0.28,0.06,10,22),bodyM);handle.position.set(0,2.4,0.6);handle.rotation.y=Math.PI/2;g.add(handle);
   [-0.4,0,0.4].forEach(x=>{const dr=new THREE.Mesh(new THREE.SphereGeometry(0.08,8,8),glass(0x66bfff));dr.position.set(x,0.1,-1.05);g.add(dr);});
   const led=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.1,0.05),emissive(0x35e0ff,1.2));led.position.set(0,0.25,-1.015);g.add(led);
-  // Те же цветные крепления, что у паровой швабры; баки, шар и кольцо сохраняют исходные позы.
+  // Те же цветные крепления, что у паровой швабры; шар и кольцо сохраняют исходные позы.
   vacuumFitTube(tubo,[0,.35,-.52],[0,2.16,.48]);
   const lowerJoint=vacuumJoint(g,[0,.30,-.55],[0,.52,-.425],.21,bodyM);lowerJoint.name='Нижний шарнир моющего пылесоса';
   const upperJoint=vacuumJoint(g,[0,2.04,.38],[0,2.17,.50],.20,bodyM);upperJoint.name='Крепление ручки моющего пылесоса';
-  // Небольшой циклонный контейнер на трубке: прозрачная колба, цветная сердцевина и крышки.
+  // Один увеличенный циклонный контейнер в центре трубки: прозрачная колба, цветная сердцевина и крышки.
   const cycloneBin=new THREE.Group();cycloneBin.name='Маленький циклонный контейнер моющего пылесоса';
   cycloneBin.position.copy(tubo.position);cycloneBin.quaternion.copy(tubo.quaternion);
-  const shell=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,.36,24),glass(0xffe27a));shell.castShadow=true;cycloneBin.add(shell);
-  const core=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.35,20),bodyM);cycloneBin.add(core);
-  for(const y of [-.205,.205]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.255,.255,.06,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
+  const shell=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.62,24),glass(0xffe27a));shell.castShadow=true;cycloneBin.add(shell);
+  const core=new THREE.Mesh(new THREE.CylinderGeometry(.20,.20,.60,20),bodyM);cycloneBin.add(core);
+  for(const y of [-.34,.34]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.075,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
   g.add(cycloneBin);
   g.userData.spin=[];vacuumWheels(g,0.7,-0.33,0.17);return g;}
 
