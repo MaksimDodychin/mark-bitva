@@ -97,7 +97,7 @@ body:not(.playing) #dpad,body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "d156792ef1";</script>
+  <script>window.__APP_VER = "4ae72695bd";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -958,7 +958,7 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   const upperJoint=vacuumJoint(g,[0,2.04,.38],[0,2.17,.50],.20,bodyM);upperJoint.name='Крепление ручки моющего пылесоса';
   // Небольшой циклонный контейнер на трубке: прозрачная колба, цветная сердцевина и крышки.
   const cycloneBin=new THREE.Group();cycloneBin.name='Маленький циклонный контейнер моющего пылесоса';
-  cycloneBin.position.set(0,.712,-.32);cycloneBin.quaternion.copy(tubo.quaternion);
+  cycloneBin.position.copy(tubo.position);cycloneBin.quaternion.copy(tubo.quaternion);
   const shell=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,.36,24),glass(0xffe27a));shell.castShadow=true;cycloneBin.add(shell);
   const core=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.35,20),bodyM);cycloneBin.add(core);
   for(const y of [-.205,.205]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.255,.255,.06,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
