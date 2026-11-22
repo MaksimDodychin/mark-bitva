@@ -92,7 +92,7 @@ body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "a9b929550c";</script>
+  <script>window.__APP_VER = "6b3e25249e";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -690,6 +690,27 @@ function vacuumJoint(g,a,b,r,material){const m=new THREE.Mesh(new THREE.Cylinder
 
 
 // Колёса поворачиваются вокруг своей оси; поперечная ось входит в корпус щётки.
+function addGroundContact(root,r=.8,flat=true){
+ if(root.userData.contactShadow)return;const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d'),grad=ctx.createRadialGradient(32,32,3,32,32,31);grad.addColorStop(0,'rgba(8,13,23,.55)');grad.addColorStop(.5,'rgba(8,13,23,.3)');grad.addColorStop(1,'rgba(8,13,23,0)');ctx.fillStyle=grad;ctx.fillRect(0,0,64,64);
+ const tex=new THREE.CanvasTexture(c),mesh=new THREE.Mesh(new THREE.PlaneGeometry(r*2,r*2),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,opacity:.8,polygonOffset:true,polygonOffsetFactor:-1}));mesh.name='Мягкая тень героя';mesh.rotation.x=-Math.PI/2;mesh.position.y=.025;root.add(mesh);root.userData.contactShadow=mesh;
+ mesh.onBeforeRender=()=>{const height=flat?Math.max(0,root.position.y):root.userData.shadowLift||0;mesh.position.y=.025-height;mesh.material.opacity=.8/(1+height*.2);mesh.scale.setScalar(1+Math.min(height,8)*.035);mesh.updateMatrixWorld(true);};
+}
+function prepareRollingWheels(g){
+ if(g.userData.wheelsPrepared)return;g.userData.wheelsPrepared=true;const groups=g.userData.rollWheels||[],old=[];
+ g.traverse(o=>{if(o.isMesh&&o.geometry?.type==='CylinderGeometry'){const p=o.geometry.parameters;if(p.radiusTop>=.14&&p.radiusTop<=.48&&Math.abs(Math.abs(o.rotation.z)-Math.PI/2)<.05&&Math.abs(o.position.y-p.radiusTop)<.16&&!groups.includes(o.parent))old.push(o);}});
+ for(const mesh of old){const parent=mesh.parent,pivot=new THREE.Group();pivot.position.copy(mesh.position);parent.add(pivot);pivot.add(mesh);mesh.position.set(0,0,0);pivot.userData.rollRadius=mesh.geometry.parameters.radiusTop;groups.push(pivot);}
+ for(const w of groups){w.name='Вращающееся колесо';const r=w.userData.rollRadius||w.children.find(m=>m.geometry?.type==='CylinderGeometry')?.geometry.parameters.radiusTop||.17;w.userData.rollRadius=r;
+  const side=Math.sign(w.position.x)||1;const depth=w.children.find(m=>m.geometry?.type==='CylinderGeometry')?.geometry.parameters.height||.18;
+  for(let i=0;i<3;i++){const spoke=new THREE.Mesh(new THREE.BoxGeometry(.026,r*.16,r*1.12),metal(i===0?0xf6daa0:0xdbe6ed));spoke.position.x=side*(depth/2+.018);spoke.rotation.x=i*Math.PI/3;w.add(spoke);}
+  const mark=new THREE.Mesh(new THREE.BoxGeometry(.035,r*.25,r*.18),plastic(0xf7c94c));mark.position.set(side*(depth/2+.022),r*.76,0);w.add(mark);
+ }
+ g.userData.rollWheels=groups;g.userData.spin=[...new Set([...(g.userData.spin||[]),...groups])];addGroundContact(g,1.1,false);
+}
+function animateRollingWheels(g,speed,dt,lift=0){
+ const pos=g.position,last=g.userData.wheelPosition;let distance=last?Math.hypot(pos.x-last.x,pos.z-last.z):0;if(distance>5)distance=0;g.userData.wheelPosition={x:pos.x,z:pos.z};g.userData.shadowLift=Math.max(0,lift);
+ for(const m of g.userData.spin||[])m.rotation.x+=m.userData.rollRadius?distance*Math.sign(speed)/m.userData.rollRadius:speed*dt*2;
+}
+
 function vacuumWheels(g,halfTrack,z,r=.17){
   vacuumJoint(g,[-halfTrack,r,z],[halfTrack,r,z],.045,metal(0x8d98a7));
   const wheels=[];
@@ -738,6 +759,8 @@ function buildStick(color){const g=new THREE.Group();
   motor.position.set(0,1.65,.54);cyc.position.set(0,1.30,.26);cyc.rotation.x=.67;acc.position.copy(motor.position);acc.rotation.x=.67;
   vacuumJoint(g,[0,.25,-.58],[0,.43,-.43],.18,plastic(color));
   vacuumJoint(g,[0,1.90,.74],[0,2.01,.82],.17,plastic(color));
+  g.userData.cordAnchor=new THREE.Vector3(.18,.33,.20).applyQuaternion(cyc.quaternion).add(cyc.position);
+  const relief=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),plastic(0x222228));relief.position.copy(g.userData.cordAnchor);g.add(relief);
   g.userData.spin=[]; vacuumWheels(g,0.79,-0.28,0.18);return g;}
 function buildUpright(color){const g=new THREE.Group();
   const base=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.34,1.2),darkMat);base.position.set(0,0.24,-0.3);base.castShadow=true;g.add(base);
@@ -880,6 +903,8 @@ function buildSteam(color){const g=new THREE.Group();
   vacuumJoint(g,[0,.20,-.55],[0,.40,-.415],.16,plastic(color));
   vacuumJoint(g,[0,1.96,.636],[0,2.11,.737],.14,plastic(color));
   const gauge=new THREE.Mesh(new THREE.CapsuleGeometry(.11,.30,6,12),glass(0x67d6ff));gauge.position.set(0,.96,-.29);gauge.rotation.x=.593;g.add(gauge);
+  g.userData.cordAnchor=new THREE.Vector3(.14,.43,.12).applyQuaternion(tank.quaternion).add(tank.position);
+  const relief=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),plastic(0x222228));relief.position.copy(g.userData.cordAnchor);g.add(relief);
   g.userData.spin=[];vacuumWheels(g,0.66,-0.28,0.16);return g;}
 function buildCarVac(color){const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.4,0.55,8,16),plastic(color));body.rotation.z=Math.PI/2;body.position.set(0,0.45,0.1);body.castShadow=true;g.add(body);
@@ -963,15 +988,16 @@ function makeDriver(){
 }
 function addDriver(group,seatY){const d=makeDriver();d.position.set(0,seatY,0.0);group.add(d);group.userData.driver=d;}
 // короткий шнур с электровилкой сзади (перёд пылесоса — это -Z, значит зад — +Z)
-function makeCord(){const g=new THREE.Group();
+function makeCord(anchor=null){const g=new THREE.Group();
   const cable=new THREE.MeshStandardMaterial({color:0x222228,roughness:0.6});
-  const line=new THREE.CatmullRomCurve3([[0,.23,.22],[0,.15,.58],[.02,.07,1.02],[.16,.06,1.58],[.10,.09,2.37]].map(p=>new THREE.Vector3(...p)));
+  const points=anchor?[anchor.clone(),new THREE.Vector3(anchor.x,anchor.y-.28,anchor.z+.10),new THREE.Vector3(.2,.5,.85),new THREE.Vector3(.12,.09,1.15),new THREE.Vector3(.1,.07,1.75),new THREE.Vector3(.1,.09,2.37)]:[[0,.23,.22],[0,.15,.58],[.02,.07,1.02],[.16,.06,1.58],[.10,.09,2.37]].map(p=>new THREE.Vector3(...p));
+  const line=new THREE.CatmullRomCurve3(points);g.userData.path=line;
   g.add(new THREE.Mesh(new THREE.TubeGeometry(line,28,.05,8,false),cable));
   const plug=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.2,0.28),new THREE.MeshStandardMaterial({color:0xf2f2f4,roughness:0.5}));plug.position.set(0.1,0.09,2.5);g.add(plug);
   const prongMat=new THREE.MeshStandardMaterial({color:0xcfd4dd,metalness:0.9,roughness:0.2});
   [-0.06,0.06].forEach(x=>{const pr=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.035,0.18),prongMat);pr.position.set(0.1+x,0.09,2.7);g.add(pr);});
   return g;}
-function addCord(group){if(group.userData.cordless)return;const c=makeCord();group.add(c);group.userData.cord=c;}
+function addCord(group){prepareRollingWheels(group);if(group.userData.cordless)return;const c=makeCord(group.userData.cordAnchor);group.add(c);group.userData.cord=c;}
 const COLORS=[{h:0x4d9fff,css:'#4d9fff'},{h:0xe23b3b,css:'#e23b3b'},{h:0x9b59ff,css:'#9b59ff'},{h:0x36c46a,css:'#36c46a'},{h:0xf5c518,css:'#f5c518'},{h:0xf2f2f2,css:'#f2f2f2'},{h:0x35d0ff,css:'#35d0ff'},{h:0xff8a3b,css:'#ff8a3b'},{h:0x26282e,css:'#26282e'},{h:0x9aa0a8,css:'#9aa0a8'},{h:0xff6fb5,css:'#ff6fb5'},{h:0x8a5a2a,css:'#8a5a2a'}];
 
 function buildConstruct(color){const g=new THREE.Group();
@@ -1004,6 +1030,8 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   const core=new THREE.Mesh(new THREE.CylinderGeometry(.20,.20,.60,20),bodyM);cycloneBin.add(core);
   for(const y of [-.34,.34]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.075,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
   g.add(cycloneBin);
+  g.userData.cordAnchor=new THREE.Vector3(.2,.36,.24).applyQuaternion(cycloneBin.quaternion).add(cycloneBin.position);
+  const relief=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),plastic(0x222228));relief.position.copy(g.userData.cordAnchor);g.add(relief);
   g.userData.spin=[];vacuumWheels(g,0.7,-0.33,0.17);return g;}
 
 
@@ -1934,7 +1962,7 @@ function driveCar(c,dt,газ,тормоз,руль){
     if(Math.abs(c.v)>3&&Math.random()<dt*(c.wet?14:9))sparkle(c.x,c.z);}
   c.g.position.set(c.x,0,c.z);c.g.rotation.y=c.yaw;
   c.g.rotation.z=руль*-0.06*clamp(c.v/6,0,1);
-  (c.g.userData.spin||[]).forEach(s=>s.rotation.x+=c.v*dt*2);
+  animateRollingWheels(c.g,c.v,dt);
   return hit;}
 
 function botDrive(c,dt){
