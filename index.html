@@ -92,7 +92,7 @@ body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "fb6d52e076";</script>
+  <script>window.__APP_VER = "bb8433eee4";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -1034,7 +1034,7 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   for(const y of [-.34,.34]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.075,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
   g.add(cycloneBin);
   g.userData.cordAnchor=new THREE.Vector3(0,.36,.32).applyQuaternion(cycloneBin.quaternion).add(cycloneBin.position);
-  g.userData.cordTailScale=.65;
+  g.userData.cordTailScale=.35;
   const relief=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),plastic(0x222228));relief.position.copy(g.userData.cordAnchor);g.add(relief);
   g.userData.spin=[];vacuumWheels(g,0.7,-0.33,0.17);return g;}
 
