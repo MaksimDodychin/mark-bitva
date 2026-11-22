@@ -92,7 +92,7 @@ body:not(.playing) .mjoy{display:none!important}
   <link rel="apple-touch-icon-precomposed" sizes="180x180" href="apple-touch-icon.png">
   <meta name="msapplication-TileImage" content="icon-192.png">
   <meta name="msapplication-TileColor" content="#3b82f6">
-  <script>window.__APP_VER = "6b3e25249e";</script>
+  <script>window.__APP_VER = "fb6d52e076";</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -988,16 +988,19 @@ function makeDriver(){
 }
 function addDriver(group,seatY){const d=makeDriver();d.position.set(0,seatY,0.0);group.add(d);group.userData.driver=d;}
 // короткий шнур с электровилкой сзади (перёд пылесоса — это -Z, значит зад — +Z)
-function makeCord(anchor=null){const g=new THREE.Group();
+function makeCord(anchor=null,tailScale=1){const g=new THREE.Group();
   const cable=new THREE.MeshStandardMaterial({color:0x222228,roughness:0.6});
   const points=anchor?[anchor.clone(),new THREE.Vector3(anchor.x,anchor.y-.28,anchor.z+.10),new THREE.Vector3(.2,.5,.85),new THREE.Vector3(.12,.09,1.15),new THREE.Vector3(.1,.07,1.75),new THREE.Vector3(.1,.09,2.37)]:[[0,.23,.22],[0,.15,.58],[.02,.07,1.02],[.16,.06,1.58],[.10,.09,2.37]].map(p=>new THREE.Vector3(...p));
+  const rear=anchor?.z||0;
+  if(tailScale!==1)for(const p of points)p.z=rear+(p.z-rear)*tailScale;
+  const plugZ=rear+(2.5-rear)*tailScale;
   const line=new THREE.CatmullRomCurve3(points);g.userData.path=line;
   g.add(new THREE.Mesh(new THREE.TubeGeometry(line,28,.05,8,false),cable));
-  const plug=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.2,0.28),new THREE.MeshStandardMaterial({color:0xf2f2f4,roughness:0.5}));plug.position.set(0.1,0.09,2.5);g.add(plug);
+  const plug=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.2,0.28),new THREE.MeshStandardMaterial({color:0xf2f2f4,roughness:0.5}));plug.position.set(0.1,0.09,plugZ);g.add(plug);
   const prongMat=new THREE.MeshStandardMaterial({color:0xcfd4dd,metalness:0.9,roughness:0.2});
-  [-0.06,0.06].forEach(x=>{const pr=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.035,0.18),prongMat);pr.position.set(0.1+x,0.09,2.7);g.add(pr);});
+  [-0.06,0.06].forEach(x=>{const pr=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.035,0.18),prongMat);pr.position.set(0.1+x,0.09,plugZ+.2);g.add(pr);});
   return g;}
-function addCord(group){prepareRollingWheels(group);if(group.userData.cordless)return;const c=makeCord(group.userData.cordAnchor);group.add(c);group.userData.cord=c;}
+function addCord(group){prepareRollingWheels(group);if(group.userData.cordless)return;const c=makeCord(group.userData.cordAnchor,group.userData.cordTailScale);group.add(c);group.userData.cord=c;}
 const COLORS=[{h:0x4d9fff,css:'#4d9fff'},{h:0xe23b3b,css:'#e23b3b'},{h:0x9b59ff,css:'#9b59ff'},{h:0x36c46a,css:'#36c46a'},{h:0xf5c518,css:'#f5c518'},{h:0xf2f2f2,css:'#f2f2f2'},{h:0x35d0ff,css:'#35d0ff'},{h:0xff8a3b,css:'#ff8a3b'},{h:0x26282e,css:'#26282e'},{h:0x9aa0a8,css:'#9aa0a8'},{h:0xff6fb5,css:'#ff6fb5'},{h:0x8a5a2a,css:'#8a5a2a'}];
 
 function buildConstruct(color){const g=new THREE.Group();
@@ -1030,7 +1033,8 @@ function buildWasher(color){const g=new THREE.Group();const bodyM=plastic(color)
   const core=new THREE.Mesh(new THREE.CylinderGeometry(.20,.20,.60,20),bodyM);cycloneBin.add(core);
   for(const y of [-.34,.34]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.345,.345,.075,24),bodyM);cap.position.y=y;cap.castShadow=true;cycloneBin.add(cap);}
   g.add(cycloneBin);
-  g.userData.cordAnchor=new THREE.Vector3(.2,.36,.24).applyQuaternion(cycloneBin.quaternion).add(cycloneBin.position);
+  g.userData.cordAnchor=new THREE.Vector3(0,.36,.32).applyQuaternion(cycloneBin.quaternion).add(cycloneBin.position);
+  g.userData.cordTailScale=.65;
   const relief=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),plastic(0x222228));relief.position.copy(g.userData.cordAnchor);g.add(relief);
   g.userData.spin=[];vacuumWheels(g,0.7,-0.33,0.17);return g;}
 
