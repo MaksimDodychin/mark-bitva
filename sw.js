@@ -1,5 +1,5 @@
 // Scoped offline application updater; version changes with the payload and updater.
-const VERSION = 'bbcb3112f6';
+const VERSION = 'f6201620c6';
 const PREFIX = "bitva-";
 const CACHE = PREFIX + VERSION;
 const SCOPE = new URL(self.registration.scope);
